@@ -19,10 +19,10 @@ function Intro() {
     }
     setReady(true)
   }
-  const windowSize = useWindowSize()
-  const vertical = useMemo(()=>{
-    return false // windowSize.width>windowSize.height
-  },[])
+  // const windowSize = useWindowSize()
+  // const vertical = useMemo(()=>{
+  //   return false // windowSize.width>windowSize.height
+  // },[])
   return (
     <>
     {ready?<Pad />:<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}

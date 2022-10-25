@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './Pad';
 import reportWebVitals from './reportWebVitals';
 import WebRenderer from "@elemaudio/web-renderer";
 import Intro from './Intro';
