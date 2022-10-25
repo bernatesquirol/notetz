@@ -185,7 +185,8 @@ function App() {
     console.log('rendering', voices)
     play(voices)
   },[activeVoices, cells, play])
-
+  const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
+  // console.log(activeCells)
   return (
     <Stage width={width} height={height} 
       onTouchMove={(e:any)=>{
@@ -246,7 +247,7 @@ function App() {
                 side={squareSize} 
                 orientation={cell.orientation} 
                 fill={"#89b717"} 
-                opacity={0.8}
+                opacity={activeCells[cellId]?1:0.7}
                 shadowBlur={10}
                 shadowOpacity={0.6}
                 label={`${cell.note} ${Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })}`}/>
@@ -257,7 +258,7 @@ function App() {
                 key={cell.note}
                 id={cell.note}
                 fill="#89b717"
-                opacity={0.8}
+                opacity={activeCells[cellId]?1:0.7}
                 // draggable
                 
                 shadowBlur={10}
