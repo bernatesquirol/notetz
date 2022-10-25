@@ -1,5 +1,4 @@
-import { useContext, useMemo, useState } from 'react';
-import { useWindowSize } from 'react-use-size';
+import { useContext, useState } from 'react';
 import { ElementaryAudioContext } from '.';
 // import { read } from "midifile-ts"
 import Pad from './Pad';
