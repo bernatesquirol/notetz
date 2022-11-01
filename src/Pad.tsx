@@ -1,13 +1,14 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Rect, Group, Line } from 'react-konva';
-import { Midi } from "@tonaljs/tonal";
+import { Midi, Scale } from "@tonaljs/tonal";
 import { useWindowSize } from 'react-use-size';
 import { LineConfig } from 'konva/lib/shapes/Line';
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
 import {el} from '@elemaudio/core';
 import { ElementaryAudioContext } from '.';
+import SelectSimple from './SelectSimple';
 const minNote = 60
 const maxNote = 84
 const range = (min: number, max: number)=>{
@@ -139,6 +140,7 @@ function App() {
     // return {widthCell: cellLat,heightCell: cellLat}
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
+  const ScaleInput = useMemo(()=>(<SelectSimple options={Scale.names()}></SelectSimple>),[])
   const [activeVoices, setActiveVoices] = useState<Record<string,string|null>>({})
   const startCell = useCallback((touchId, cellId)=>{
     try{
@@ -188,7 +190,9 @@ function App() {
   const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
   // console.log(activeCells)
   return (
-    <Stage width={width} height={height} 
+    <>
+    {ScaleInput}
+    <Stage width={width} height={height-20} 
       onTouchMove={(e:any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
       }}
@@ -273,7 +277,7 @@ function App() {
           </Group>
         ))}
       </Layer>
-    </Stage>
+    </Stage></>
   );
 }
 const RectWithLabel = (props: {side:number,offsetRect:number}&RectConfig&TextProps)=>{
