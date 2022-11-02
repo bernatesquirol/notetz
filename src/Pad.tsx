@@ -116,7 +116,7 @@ function generateGrid(): {grid:Record<string,{x:number,y:number,note:number}>, m
   return {grid, minX:0, maxX:maxX, minY:0, maxY}
 }
 
-function App() {
+function Pad() {
   const {grid, minX, maxX, minY, maxY} = useMemo(()=>{
     return generateGrid()
   },[])
@@ -140,7 +140,7 @@ function App() {
     // return {widthCell: cellLat,heightCell: cellLat}
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
-  const ScaleInput = useMemo(()=>(<SelectSimple options={Scale.names()}></SelectSimple>),[])
+  // const ScaleInput = useMemo(()=>(),[])
   const [activeVoices, setActiveVoices] = useState<Record<string,string|null>>({})
   const startCell = useCallback((touchId, cellId)=>{
     try{
@@ -189,9 +189,16 @@ function App() {
   },[activeVoices, cells, play])
   const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
   // console.log(activeCells)
+  const [selectedScale, changeScale ] = useState<string|null>(null)
+  const [selectedRoot, changeRoot] = useState<string|null>(null)
+  const selectedCells = useMemo(()=>{
+    if (!selectedRoot || !selectedScale) return []
+    return Scale.get(`${selectedRoot} ${selectedScale}`).notes
+  },[selectedRoot, selectedScale])
   return (
     <>
-    {ScaleInput}
+    {JSON.stringify({selectedScale, selectedRoot})}
+    <SelectSimple options={Scale.names()} onChange={(e)=>changeScale(e.target.value)}></SelectSimple>
     <Stage width={width} height={height-20} 
       onTouchMove={(e:any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
@@ -206,6 +213,8 @@ function App() {
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={cell.note}
+            onDblTap={(e)=>changeRoot(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))}
+            onDblClick={(e)=>changeRoot(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))}
             onMouseDown={(e)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
               setStarted(true)
@@ -250,7 +259,7 @@ function App() {
                 offsetTriangle={offset} 
                 side={squareSize} 
                 orientation={cell.orientation} 
-                fill={"#89b717"} 
+                fill={selectedCells.includes(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))?"red":"#89b717"} 
                 opacity={activeCells[cellId]?1:0.7}
                 shadowBlur={10}
                 shadowOpacity={0.6}
@@ -261,7 +270,8 @@ function App() {
                 offsetRect={offset}
                 key={cell.note}
                 id={cell.note}
-                fill="#89b717"
+                // fill="#89b717"
+                fill={selectedCells.includes(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))?"red":"#89b717"} 
                 opacity={activeCells[cellId]?1:0.7}
                 // draggable
                 
@@ -327,4 +337,4 @@ const Triangle = (props: TriangleProps)=>{
   }
 }
 
-export default App;
+export default Pad;
