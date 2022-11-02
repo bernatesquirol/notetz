@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Rect, Group, Line } from 'react-konva';
-import { Midi, Scale } from "@tonaljs/tonal";
+import { Midi, Scale, Note, Interval } from "@tonaljs/tonal";
 import { useWindowSize } from 'react-use-size';
 import { LineConfig } from 'konva/lib/shapes/Line';
 import { TextConfig } from 'konva/lib/shapes/Text';
@@ -11,6 +11,13 @@ import { ElementaryAudioContext } from '.';
 import SelectSimple from './SelectSimple';
 const minNote = 60
 const maxNote = 84
+const getSharpValue = (noteLabel)=>{
+  let simplified = Note.simplify(noteLabel)
+  if (simplified.includes('b')){
+    return `${Note.transposeBy(Interval.fromSemitones(-1))(simplified)}#`
+  }
+  return simplified
+}
 const range = (min: number, max: number)=>{
   return (new Array(max-min)).fill(1).map((i,j)=>j+min)
 }
@@ -193,13 +200,15 @@ function Pad() {
   const [selectedRoot, changeRoot] = useState<string|null>(null)
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
-    return Scale.get(`${selectedRoot} ${selectedScale}`).notes
+    let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)
+    console.log(notes)
+    return notes
   },[selectedRoot, selectedScale])
   return (
     <>
     {JSON.stringify({selectedScale, selectedRoot})}
     <SelectSimple options={Scale.names()} onChange={(e)=>changeScale(e.target.value)}></SelectSimple>
-    <Stage width={width} height={height-20} 
+    <Stage width={width} height={height-25} 
       onTouchMove={(e:any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
       }}
@@ -209,12 +218,14 @@ function Pad() {
       onMouseUp={()=>setStarted(false)}
       >
       <Layer >
-        {Object.entries(cells).map(([cellId,cell]:any) => (
+        {Object.entries(cells).map(([cellId,cell]:any) => {
+          let noteLabel = Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })
+          return (
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={cell.note}
-            onDblTap={(e)=>changeRoot(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))}
-            onDblClick={(e)=>changeRoot(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))}
+            onDblTap={(e)=>changeRoot(noteLabel)}
+            onDblClick={(e)=>changeRoot(noteLabel)}
             onMouseDown={(e)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
               setStarted(true)
@@ -259,11 +270,13 @@ function Pad() {
                 offsetTriangle={offset} 
                 side={squareSize} 
                 orientation={cell.orientation} 
-                fill={selectedCells.includes(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))?"red":"#89b717"} 
+                fill={selectedCells.includes(noteLabel)?"hsl(178, 78%, 40%)":"hsl(77, 78%, 40%)"} 
+                strokeWidth={selectedRoot===noteLabel?1.5:0}
+                stroke={selectedRoot===noteLabel?'black':undefined}
                 opacity={activeCells[cellId]?1:0.7}
                 shadowBlur={10}
                 shadowOpacity={0.6}
-                label={`${cell.note} ${Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })}`}/>
+                label={`${cell.note} ${noteLabel}`}/>
               :
               <RectWithLabel
                 side={squareSize}
@@ -271,7 +284,9 @@ function Pad() {
                 key={cell.note}
                 id={cell.note}
                 // fill="#89b717"
-                fill={selectedCells.includes(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))?"red":"#89b717"} 
+                strokeWidth={selectedRoot===noteLabel?1.5:0}
+                stroke={selectedRoot===noteLabel?'black':undefined}
+                fill={selectedCells.includes(noteLabel)?"hsl(178, 78%, 40%)":"hsl(77, 78%, 40%)"} 
                 opacity={activeCells[cellId]?1:0.7}
                 // draggable
                 
@@ -281,11 +296,11 @@ function Pad() {
                 // scaleY={cell.isDragging ? 1.2 : 1}
                 // onDragStart={handleDragStart}
                 // onDragEnd={handleDragEnd}
-                label={`${cell.note} ${Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })}`}
+                label={`${cell.note} ${noteLabel}`}
               />}
           {/*  */}
           </Group>
-        ))}
+        )})}
       </Layer>
     </Stage></>
   );
