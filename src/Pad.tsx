@@ -235,18 +235,18 @@ function Pad({width, height}) {
       return {...mvs, [key]: newVal}
     })
   },[setMoves])
-  const moveDirections = useMemo(()=>{
-    return Object.fromEntries(Object.entries(moves)
-      .filter(([k,v]:any)=>v && v.length>1).map(([k,v]:any)=>{
-        let xInitial = v[0].x
-        let yInitial = v[0].y
-        let {x,y} = v.slice(1).reduce((acc,{x,y})=>({x:acc.x+(x-xInitial), y:acc.y+(y-yInitial)}),{x:0,y:0})
-        x = x/v.length
-        y = y/v.length
-        // console.log(x,y,getDir({x,y}))
-        return [k,getDir({x,y})]
-      }))
-  },[moves])
+  // const moveDirections = useMemo(()=>{
+  //   return Object.fromEntries(Object.entries(moves)
+  //     .filter(([k,v]:any)=>v && v.length>1).map(([k,v]:any)=>{
+  //       let xInitial = v[0].x
+  //       let yInitial = v[0].y
+  //       let {x,y} = v.slice(1).reduce((acc,{x,y})=>({x:acc.x+(x-xInitial), y:acc.y+(y-yInitial)}),{x:0,y:0})
+  //       x = x/v.length
+  //       y = y/v.length
+  //       // console.log(x,y,getDir({x,y}))
+  //       return [k,getDir({x,y})]
+  //     }))
+  // },[moves])
   return (
     <>
     {/* {JSON.stringify(moveDirections)} */}
