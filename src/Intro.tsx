@@ -29,7 +29,7 @@ function Intro() {
     <>
     {ready?
     <FlowSelectorContext.Provider initialValue={{key:'C', scale:'mixolydian'}}>
-      <FlowSelector width={width} height={height*0.35}/>
+      <FlowSelector width={width} height={height*0.25}/>
       <Pad width={width} height={height*0.75}/>
     </FlowSelectorContext.Provider>
     :<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}

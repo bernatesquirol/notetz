@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
 import WebRenderer from "@elemaudio/web-renderer";
-import Intro from './Intro';
 import App from './App';
 const audioContext: AudioContext = new AudioContext({
   latencyHint: "interactive",

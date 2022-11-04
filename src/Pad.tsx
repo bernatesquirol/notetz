@@ -249,9 +249,9 @@ function Pad({width, height}) {
   },[moves])
   return (
     <>
-    {JSON.stringify(moveDirections)}
+    {/* {JSON.stringify(moveDirections)} */}
     {/* <SelectSimple options={Scale.names()} onChange={(e)=>setScale(e.target.value)}></SelectSimple> */}
-    <Stage width={width} height={height-25} 
+    <Stage width={width} height={height} 
       onTouchMove={(e:any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
       }}
@@ -266,7 +266,7 @@ function Pad({width, height}) {
           return (
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
-            id={cell.note}
+            id={`${cell.note}-g`}
             onDblTap={(e)=>setKey(noteLabel)}
             onDblClick={(e)=>setKey(noteLabel)}
             onMouseDown={(e)=>{
@@ -330,7 +330,7 @@ function Pad({width, height}) {
                 side={squareSize}
                 offsetRect={offset}
                 key={cell.note}
-                id={cell.note}
+                id={`${cell.note}`}
                 // fill="#89b717"
                 strokeWidth={selectedRoot===noteLabel?1.5:0}
                 stroke={selectedRoot===noteLabel?'black':undefined}
