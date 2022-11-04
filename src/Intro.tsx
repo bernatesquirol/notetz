@@ -1,7 +1,9 @@
 import { useContext, useState } from 'react';
+import { useWindowSize } from 'react-use-size';
 import { ElementaryAudioContext } from '.';
 // import { read } from "midifile-ts"
 import Pad from './Pad';
+import FlowSelector, { FlowSelectorContext } from './FlowSelector';
 
 
 
@@ -22,9 +24,15 @@ function Intro() {
   // const vertical = useMemo(()=>{
   //   return false // windowSize.width>windowSize.height
   // },[])
+  const {width, height} = useWindowSize()
   return (
     <>
-    {ready?<Pad />:<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}
+    {ready?
+    <FlowSelectorContext.Provider initialValue={{key:'C', scale:'mixolydian'}}>
+      <FlowSelector width={width} height={height*0.35}/>
+      <Pad width={width} height={height*0.75}/>
+    </FlowSelectorContext.Provider>
+    :<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}
     </>
   );
 }

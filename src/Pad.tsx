@@ -2,13 +2,12 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import './App.css';
 import { Layer, Stage, Text, Rect, Group, Line } from 'react-konva';
 import { Midi, Scale, Note, Interval } from "@tonaljs/tonal";
-import { useWindowSize } from 'react-use-size';
 import { LineConfig } from 'konva/lib/shapes/Line';
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
 import {el} from '@elemaudio/core';
 import { ElementaryAudioContext } from '.';
-import SelectSimple from './SelectSimple';
+import { FlowSelectorContext } from './FlowSelector';
 const minNote = 60
 const maxNote = 84
 const getSharpValue = (noteLabel)=>{
@@ -32,7 +31,24 @@ export const DIRECTIONS = {
   NE: {x:0.5,y:0.5},
   E: {x:1,y:0}
 };
-
+const getDir = ({x,y}, buffer=0.3)=>{
+  let mod = Math.sqrt(Math.pow(x,2)+Math.pow(y,2))
+  x = x/mod
+  y = y/mod
+  // let [xAprox, yAprox] =[Math.round(x*2)/2, Math.round(y*2)/2]
+  let orientation = ''
+  if (Math.abs(y)>=buffer){
+    orientation = y>0?'N':'S'
+  }
+  if (Math.abs(x)>=buffer){
+    orientation += x>0?'E':'O'
+  }
+  console.log(orientation, x,y)
+  // let returnVal = Object.entries(DIRECTIONS).find(([k,{x,y}])=>x===xAprox&&y===yAprox)
+  if (orientation) return orientation
+  // console.log(x,y, xAprox, yAprox)
+  return null
+}
 const multiply = (dir, num)=>({...dir,x:dir.x*num, y:dir.y*num})
 const add = (dir, dir2)=>({...dir,x:dir.x+dir2.x, y:dir.y+dir2.y})
 const synthFunc = (props: {freq: number, key: string})=>{
@@ -123,15 +139,15 @@ function generateGrid(): {grid:Record<string,{x:number,y:number,note:number}>, m
   return {grid, minX:0, maxX:maxX, minY:0, maxY}
 }
 
-function Pad() {
+function Pad({width, height}) {
   const {grid, minX, maxX, minY, maxY} = useMemo(()=>{
     return generateGrid()
   },[])
   const [cells, ] = React.useState(grid);
-  const { height, width } = useWindowSize();
+  
   const {squareSize, offset, extraX, extraY} = useMemo(()=>{
     let [numW,numH] = ([(1+maxX-minX),1+maxY-minY])
-    console.log(width/numW, numW, height/numH, numH)
+    // console.log(width/numW, numW, height/numH, numH)
     let cellD = Math.min(width/numW, height/numH)
     let extraX = 0
     let extraY = 0
@@ -191,23 +207,50 @@ function Pad() {
         return {freq:cellId?Midi.midiToFreq(Midi.toMidi(cells[cellId].note)!):null, key:`${touchId}`}
       // })
     })).flat()
-    console.log('rendering', voices)
+    // console.log('rendering', voices)
     play(voices)
   },[activeVoices, cells, play])
   const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
   // console.log(activeCells)
-  const [selectedScale, changeScale ] = useState<string|null>(null)
-  const [selectedRoot, changeRoot] = useState<string|null>(null)
+  // const [selectedScale, setScale ] = useState<string|null>(null)
+  // const [selectedRoot, setKey] = useState<string|null>(null)
+  const {scale: selectedScale, key: selectedRoot, setKey} = FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
     let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)
-    console.log(notes)
+    // console.log(notes)
     return notes
   },[selectedRoot, selectedScale])
+  const [moves, setMoves] = useState({})
+  const setMove = useCallback((key, point, override=false)=>{
+    setMoves((mvs)=>{
+      let newVal: any = null
+      if (point){
+        if (override){
+          newVal = [point]
+        }else{
+          newVal = [point, ...(mvs[key]||[]).slice(0,20)]
+        }
+      }
+      return {...mvs, [key]: newVal}
+    })
+  },[setMoves])
+  const moveDirections = useMemo(()=>{
+    return Object.fromEntries(Object.entries(moves)
+      .filter(([k,v]:any)=>v && v.length>1).map(([k,v]:any)=>{
+        let xInitial = v[0].x
+        let yInitial = v[0].y
+        let {x,y} = v.slice(1).reduce((acc,{x,y})=>({x:acc.x+(x-xInitial), y:acc.y+(y-yInitial)}),{x:0,y:0})
+        x = x/v.length
+        y = y/v.length
+        // console.log(x,y,getDir({x,y}))
+        return [k,getDir({x,y})]
+      }))
+  },[moves])
   return (
     <>
-    {JSON.stringify({selectedScale, selectedRoot})}
-    <SelectSimple options={Scale.names()} onChange={(e)=>changeScale(e.target.value)}></SelectSimple>
+    {JSON.stringify(moveDirections)}
+    {/* <SelectSimple options={Scale.names()} onChange={(e)=>setScale(e.target.value)}></SelectSimple> */}
     <Stage width={width} height={height-25} 
       onTouchMove={(e:any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
@@ -224,8 +267,8 @@ function Pad() {
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={cell.note}
-            onDblTap={(e)=>changeRoot(noteLabel)}
-            onDblClick={(e)=>changeRoot(noteLabel)}
+            onDblTap={(e)=>setKey(noteLabel)}
+            onDblClick={(e)=>setKey(noteLabel)}
             onMouseDown={(e)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
               setStarted(true)
@@ -234,11 +277,14 @@ function Pad() {
             onMouseMove={(e)=>{
               e.cancelBubble = true
               if (started){
-                // console.log('move', 'click', cellId)
+                setMove('click', {x:e.evt.clientX, y:e.evt.clientY})
+                
+                // console.log('move',e, )
               }
             }}
             onMouseEnter={()=>{
               if (started){
+                setMove('click', null)
                 startCell('click', cellId)
               }
             }}
@@ -251,8 +297,10 @@ function Pad() {
               e.evt.preventDefault()
               e.cancelBubble=true
               if(activeVoices[e.pointerId]===cellId){
+                setMove(e.pointerId, {x:e.evt.clientX, y:e.evt.clientY})
                 // console.log('move', e.pointerId, cellId)
               }else{
+                setMove(e.pointerId, null)
                 startCell(e.pointerId, cellId)
               }
             }}

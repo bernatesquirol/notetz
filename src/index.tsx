@@ -4,6 +4,7 @@ import './index.css';
 import reportWebVitals from './reportWebVitals';
 import WebRenderer from "@elemaudio/web-renderer";
 import Intro from './Intro';
+import App from './App';
 const audioContext: AudioContext = new AudioContext({
   latencyHint: "interactive",
   sampleRate: 44100,
@@ -22,7 +23,7 @@ core.on("load", () => {
   root.render(
     <React.StrictMode>
       <ElementaryAudioContext.Provider value={{core,audioContext}}>
-      <Intro />
+      <App />
       </ElementaryAudioContext.Provider>
     </React.StrictMode>
   );
