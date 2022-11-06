@@ -31,24 +31,24 @@ export const DIRECTIONS = {
   NE: {x:0.5,y:0.5},
   E: {x:1,y:0}
 };
-const getDir = ({x,y}, buffer=0.3)=>{
-  let mod = Math.sqrt(Math.pow(x,2)+Math.pow(y,2))
-  x = x/mod
-  y = y/mod
-  // let [xAprox, yAprox] =[Math.round(x*2)/2, Math.round(y*2)/2]
-  let orientation = ''
-  if (Math.abs(y)>=buffer){
-    orientation = y>0?'N':'S'
-  }
-  if (Math.abs(x)>=buffer){
-    orientation += x>0?'E':'O'
-  }
-  console.log(orientation, x,y)
-  // let returnVal = Object.entries(DIRECTIONS).find(([k,{x,y}])=>x===xAprox&&y===yAprox)
-  if (orientation) return orientation
-  // console.log(x,y, xAprox, yAprox)
-  return null
-}
+// const getDir = ({x,y}, buffer=0.3)=>{
+//   let mod = Math.sqrt(Math.pow(x,2)+Math.pow(y,2))
+//   x = x/mod
+//   y = y/mod
+//   // let [xAprox, yAprox] =[Math.round(x*2)/2, Math.round(y*2)/2]
+//   let orientation = ''
+//   if (Math.abs(y)>=buffer){
+//     orientation = y>0?'N':'S'
+//   }
+//   if (Math.abs(x)>=buffer){
+//     orientation += x>0?'E':'O'
+//   }
+//   console.log(orientation, x,y)
+//   // let returnVal = Object.entries(DIRECTIONS).find(([k,{x,y}])=>x===xAprox&&y===yAprox)
+//   if (orientation) return orientation
+//   // console.log(x,y, xAprox, yAprox)
+//   return null
+// }
 const multiply = (dir, num)=>({...dir,x:dir.x*num, y:dir.y*num})
 const add = (dir, dir2)=>({...dir,x:dir.x+dir2.x, y:dir.y+dir2.y})
 const synthFunc = (props: {freq: number, key: string})=>{
@@ -221,7 +221,7 @@ function Pad({width, height}) {
     // console.log(notes)
     return notes
   },[selectedRoot, selectedScale])
-  const [moves, setMoves] = useState({})
+  const [, setMoves] = useState({})
   const setMove = useCallback((key, point, override=false)=>{
     setMoves((mvs)=>{
       let newVal: any = null
@@ -247,6 +247,7 @@ function Pad({width, height}) {
   //       return [k,getDir({x,y})]
   //     }))
   // },[moves])
+  // console.log(moves)
   return (
     <>
     {/* {JSON.stringify(moveDirections)} */}
