@@ -253,48 +253,49 @@ function Pad({width, height}) {
     {/* {JSON.stringify(moveDirections)} */}
     {/* <SelectSimple options={Scale.names()} onChange={(e)=>setScale(e.target.value)}></SelectSimple> */}
     <Stage width={width} height={height} 
-      onTouchMove={(e:any)=>{
+      // onTouchMove={(e:any)=>{
+      //   if (activeVoices[e.pointerId]) stopCell(e.pointerId)
+      // }}
+      onMouseMove={(e:any)=>{
+        // if (activeVoices['click']) stopCell('click')
+      }}
+      onMouseUp={(e)=>{
+        if (activeVoices['click']) stopCell('click')
+        setStarted(false)
+      }}
+      onTouchEnd={(e: any)=>{
         if (activeVoices[e.pointerId]) stopCell(e.pointerId)
       }}
-      onMouseMove={(e:any)=>{
-        if (activeVoices['click']) stopCell('click')
-      }}
-      onMouseUp={()=>setStarted(false)}
       >
       <Layer >
         {Object.entries(cells).map(([cellId,cell]:any) => {
           let noteLabel = Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })
-          return (
-          //
-          <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
-            id={`${cell.note}-g`}
-            onDblTap={(e)=>setKey(noteLabel)}
-            onDblClick={(e)=>setKey(noteLabel)}
-            onMouseDown={(e)=>{
+          let effects = selectedCells.includes(noteLabel)? {
+            onMouseDown:(e)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
               setStarted(true)
               startCell('click', cellId)
-            }}
-            onMouseMove={(e)=>{
+            },
+            onMouseMove:(e)=>{
               e.cancelBubble = true
               if (started){
                 setMove('click', {x:e.evt.clientX, y:e.evt.clientY})
                 
                 // console.log('move',e, )
               }
-            }}
-            onMouseEnter={()=>{
+            },
+            onMouseEnter:()=>{
               if (started){
                 setMove('click', null)
                 startCell('click', cellId)
               }
-            }}
-            onMouseUp={(e)=>{
+            },
+            onMouseUp:(e)=>{
               e.cancelBubble=true
               stopCell('click', cellId)
               setStarted(false)
-            }}
-            onTouchMove={(e:any)=>{
+            },
+            onTouchMove:(e:any)=>{
               e.evt.preventDefault()
               e.cancelBubble=true
               if(activeVoices[e.pointerId]===cellId){
@@ -304,16 +305,23 @@ function Pad({width, height}) {
                 setMove(e.pointerId, null)
                 startCell(e.pointerId, cellId)
               }
-            }}
-            onTouchStart={(e:any)=>{
+            },
+            onTouchStart:(e:any)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
               startCell(e.pointerId, cellId)
               // startCell(cellId, cell)
-            }}
-            onTouchEnd={(e:any)=>{
+            },
+            onTouchEnd: (e:any)=>{
               stopCell(e.pointerId, cellId)
-            }}
-            > 
+            }
+          }:{}
+          return (
+          //
+          <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
+            id={`${cell.note}-g`}
+            onDblTap={(e)=>setKey(noteLabel)}
+            onDblClick={(e)=>setKey(noteLabel)}
+            {...effects}> 
             {cell.orientation?
               <TriangleWithLabel 
                 offsetTriangle={offset} 
