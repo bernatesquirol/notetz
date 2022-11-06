@@ -1,8 +1,7 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import './App.css';
-import { Layer, Stage, Text, Rect, Group, Line } from 'react-konva';
+import { Layer, Stage, Text, Group, Line } from 'react-konva';
 import { Midi, Scale, Note, Interval } from "@tonaljs/tonal";
-import { LineConfig } from 'konva/lib/shapes/Line';
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
 import {el} from '@elemaudio/core';
@@ -31,24 +30,7 @@ export const DIRECTIONS = {
   NE: {x:0.5,y:0.5},
   E: {x:1,y:0}
 };
-// const getDir = ({x,y}, buffer=0.3)=>{
-//   let mod = Math.sqrt(Math.pow(x,2)+Math.pow(y,2))
-//   x = x/mod
-//   y = y/mod
-//   // let [xAprox, yAprox] =[Math.round(x*2)/2, Math.round(y*2)/2]
-//   let orientation = ''
-//   if (Math.abs(y)>=buffer){
-//     orientation = y>0?'N':'S'
-//   }
-//   if (Math.abs(x)>=buffer){
-//     orientation += x>0?'E':'O'
-//   }
-//   console.log(orientation, x,y)
-//   // let returnVal = Object.entries(DIRECTIONS).find(([k,{x,y}])=>x===xAprox&&y===yAprox)
-//   if (orientation) return orientation
-//   // console.log(x,y, xAprox, yAprox)
-//   return null
-// }
+
 const multiply = (dir, num)=>({...dir,x:dir.x*num, y:dir.y*num})
 const add = (dir, dir2)=>({...dir,x:dir.x+dir2.x, y:dir.y+dir2.y})
 const synthFunc = (props: {freq: number, key: string})=>{
@@ -221,33 +203,7 @@ function Pad({width, height}) {
     // console.log(notes)
     return notes
   },[selectedRoot, selectedScale])
-  const [, setMoves] = useState({})
-  const setMove = useCallback((key, point, override=false)=>{
-    setMoves((mvs)=>{
-      let newVal: any = null
-      if (point){
-        if (override){
-          newVal = [point]
-        }else{
-          newVal = [point, ...(mvs[key]||[]).slice(0,20)]
-        }
-      }
-      return {...mvs, [key]: newVal}
-    })
-  },[setMoves])
-  // const moveDirections = useMemo(()=>{
-  //   return Object.fromEntries(Object.entries(moves)
-  //     .filter(([k,v]:any)=>v && v.length>1).map(([k,v]:any)=>{
-  //       let xInitial = v[0].x
-  //       let yInitial = v[0].y
-  //       let {x,y} = v.slice(1).reduce((acc,{x,y})=>({x:acc.x+(x-xInitial), y:acc.y+(y-yInitial)}),{x:0,y:0})
-  //       x = x/v.length
-  //       y = y/v.length
-  //       // console.log(x,y,getDir({x,y}))
-  //       return [k,getDir({x,y})]
-  //     }))
-  // },[moves])
-  // console.log(moves)
+ 
   return (
     <>
     {/* {JSON.stringify(moveDirections)} */}
@@ -279,14 +235,14 @@ function Pad({width, height}) {
             onMouseMove:(e)=>{
               e.cancelBubble = true
               if (started){
-                setMove('click', {x:e.evt.clientX, y:e.evt.clientY})
+                // setMove('click', {x:e.evt.clientX, y:e.evt.clientY})
                 
                 // console.log('move',e, )
               }
             },
             onMouseEnter:()=>{
               if (started){
-                setMove('click', null)
+                // setMove('click', null)
                 startCell('click', cellId)
               }
             },
@@ -299,10 +255,10 @@ function Pad({width, height}) {
               e.evt.preventDefault()
               e.cancelBubble=true
               if(activeVoices[e.pointerId]===cellId){
-                setMove(e.pointerId, {x:e.evt.clientX, y:e.evt.clientY})
+                // setMove(e.pointerId, {x:e.evt.clientX, y:e.evt.clientY})
                 // console.log('move', e.pointerId, cellId)
               }else{
-                setMove(e.pointerId, null)
+                // setMove(e.pointerId, null)
                 startCell(e.pointerId, cellId)
               }
             },
@@ -313,29 +269,19 @@ function Pad({width, height}) {
             },
             onTouchEnd: (e:any)=>{
               stopCell(e.pointerId, cellId)
-            }
+            },
+            onDblTap: (e)=>setKey(noteLabel),
+            onDblClick: (e)=>setKey(noteLabel)
           }:{}
           return (
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={`${cell.note}-g`}
-            onDblTap={(e)=>setKey(noteLabel)}
-            onDblClick={(e)=>setKey(noteLabel)}
-            {...effects}> 
-            {cell.orientation?
-              <TriangleWithLabel 
-                offsetTriangle={offset} 
-                side={squareSize} 
-                orientation={cell.orientation} 
-                fill={selectedCells.includes(noteLabel)?"hsl(178, 78%, 40%)":"hsl(77, 78%, 40%)"} 
-                strokeWidth={selectedRoot===noteLabel?1.5:0}
-                stroke={selectedRoot===noteLabel?'black':undefined}
-                opacity={activeCells[cellId]?1:0.7}
-                shadowBlur={10}
-                shadowOpacity={0.6}
-                label={`${cell.note} ${noteLabel}`}/>
-              :
+            > 
+            {
+           
               <RectWithLabel
+                orientation={cell.orientation}
                 side={squareSize}
                 offsetRect={offset}
                 key={cell.note}
@@ -354,6 +300,7 @@ function Pad({width, height}) {
                 // onDragStart={handleDragStart}
                 // onDragEnd={handleDragEnd}
                 label={`${cell.note} ${noteLabel}`}
+                effects={effects}
               />}
           {/*  */}
           </Group>
@@ -362,51 +309,74 @@ function Pad({width, height}) {
     </Stage></>
   );
 }
-const RectWithLabel = (props: {side:number,offsetRect:number}&RectConfig&TextProps)=>{
-  let {side, label, textProps, offsetRect, ...otherProps} = props
+const RectWithLabel = (props: {orientation?:keyof typeof DIRECTIONS,side:number,offsetRect:number}&RectConfig&TextProps)=>{
+  let {side, effects,  label, textProps, offsetRect, ...otherProps} = props
   return <Group>
-      <Rect rotation={45} width={side}
-            height={side} {...otherProps} x={offsetRect}/>
+      <RectBuffer buffer={0} rotation={45} side={side}
+            orientation={props.orientation}
+            {...otherProps} x={offsetRect}/>
+      <RectBuffer buffer={0.25} rotation={45} side={side} {...otherProps} x={offsetRect} orientation={props.orientation} {...effects} opacity={0}/>
       <Text {...textProps} x={offsetRect} y={offsetRect} text={label}/>
     </Group>
 }
 
-type TriangleProps = {offsetTriangle:number,side:number,orientation:string}&LineConfig
+const RectBuffer = ({side, buffer, orientation, ...props})=>{
+  let x0 = (t)=>0+side*t
+  let y0 = (t)=>side
+  let x1 = (t)=>side
+  let y1 = (t)=>side-side*t
+  let x2 = (t)=>side-side*t
+  let y2 = (t)=>0
+  let x3 = (t)=>0
+  let y3 = (t)=>side*t  
+  // let points = [x0(0), y0(0), x1(0), y1(0), x2(0), y2(0), x3(0), y3(0),]
+  // if (!excludedOrientations) excludedOrientations = []
+  let points:any[] = [] // [x0(1), y0(1), x1(1), y1(1), x2(1), y2(1), x3(1), y3(1),]
+  // if (excludedOrientations){}
+  // let bufferO, bufferE, bufferN, bufferS
+  if (orientation!=="E") points.push([x3(1-buffer), y3(1-buffer), x0(buffer), y0(buffer), ])
+  if (orientation!=="N") points.push([x0(1-buffer), y0(1-buffer), x1(buffer), y1(buffer),])
+  if (orientation!=="O") points.push([x1(1-buffer), y1(1-buffer), x2(buffer), y2(buffer), ])
+  if (orientation!=="S") points.push([x2(1-buffer), y2(1-buffer), x3(buffer), y3(buffer), ])
+  // [0,side,side,side,side,0,0,0]
+  return <Line closed points={points.flat()} rotation={45} {...props}/>
+}
+// type TriangleProps = {offsetTriangle:number,side:number,orientation:string}&LineConfig
 type TextProps = {label:string, textProps?:TextConfig}
-const TriangleWithLabel = (props: TriangleProps&TextProps)=>{
-  let {label, textProps, ...otherProps} = props
-  let {orientation, offsetTriangle} = otherProps
-  const textPositionOffset = useMemo(()=>{
-    switch(orientation){
-      case "S":
-        return {x:offsetTriangle, y:(3/2)*offsetTriangle}
-      case "N":
-        return {x:offsetTriangle, y:(1/2)*offsetTriangle}
-      case "E":
-        return {x:(3/2)*offsetTriangle, y:offsetTriangle}
-      case "O":
-        return {x:(1/2)*offsetTriangle, y:offsetTriangle}
-    }
-  },[orientation, offsetTriangle])
-  return <Group>
-      <Triangle {...otherProps}/>
-      <Text {...textProps} text={label} {...textPositionOffset}/>
-    </Group>
-}
-const Triangle = (props: TriangleProps)=>{
-  let {offsetTriangle, side, orientation, ...lineProps} = props
-  switch(orientation){
-    case "O":
-      return <Line closed x={offsetTriangle} points={[0,side,side,side,0,0]} rotation={45} {...lineProps}/>
-    case "E":
-      return <Line closed x={offsetTriangle} points={[side,0,side,side,0,0]} rotation={45} {...lineProps}/>
-    case "N":
-      return <Line closed y={offsetTriangle} points={[side,0,side,side,0,0]} rotation={-45} {...lineProps}/>
-    case "S":
-      return <Line closed y={offsetTriangle}  points={[0,side,side,side,0,0]} rotation={-45} {...lineProps}/>
-    default:
-      return null
-  }
-}
+// const TriangleWithLabel = (props: TriangleProps&TextProps)=>{
+//   let {label, textProps, ...otherProps} = props
+//   let {orientation, offsetTriangle} = otherProps
+//   const textPositionOffset = useMemo(()=>{
+//     switch(orientation){
+//       case "S":
+//         return {x:offsetTriangle, y:(3/2)*offsetTriangle}
+//       case "N":
+//         return {x:offsetTriangle, y:(1/2)*offsetTriangle}
+//       case "E":
+//         return {x:offsetTriangle, y:offsetTriangle}
+//       case "O":
+//         return {x:(1/2)*offsetTriangle, y:offsetTriangle}
+//     }
+//   },[orientation, offsetTriangle])
+//   return <Group>
+//       <RectBuffer buffer={0.25} {...otherProps}/>
+//       <Text {...textProps} text={label} {...textPositionOffset}/>
+//     </Group>
+// }
+// const Triangle = (props: TriangleProps)=>{
+//   let {offsetTriangle, side, buffer, orientation, ...lineProps} = props
+//   switch(orientation){
+//     case "O":
+//       return <Line closed x={offsetTriangle} points={[0,side,side,side,0,0]} rotation={45} {...lineProps}/>
+//     case "E":
+//       return <Line closed x={offsetTriangle} points={[side,0,side,side,0,0]} rotation={45} {...lineProps}/>
+//     case "N":
+//       return <Line closed y={offsetTriangle} points={[side,0,side,side,0,0]} rotation={-45} {...lineProps}/>
+//     case "S":
+//       return <Line closed y={offsetTriangle}  points={[0,side,side,side,0,0]} rotation={-45} {...lineProps}/>
+//     default:
+//       return null
+//   }
+// }
 
 export default Pad;
