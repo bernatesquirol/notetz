@@ -4,6 +4,13 @@ import './index.css';
 import reportWebVitals from './reportWebVitals';
 import WebRenderer from "@elemaudio/web-renderer";
 import App from './App';
+declare global {
+  interface Window {
+    webkitAudioContext: any
+  }
+}
+var AudioContext = window.AudioContext // Default
+    || window.webkitAudioContext // Safari and old versions of Chrome
 const audioContext: AudioContext = new AudioContext({
   latencyHint: "interactive",
   sampleRate: 44100,
