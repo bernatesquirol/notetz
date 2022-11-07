@@ -193,9 +193,6 @@ function Pad({width, height}) {
     play(voices)
   },[activeVoices, cells, play])
   const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
-  // console.log(activeCells)
-  // const [selectedScale, setScale ] = useState<string|null>(null)
-  // const [selectedRoot, setKey] = useState<string|null>(null)
   const {scale: selectedScale, key: selectedRoot, setKey} = FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
@@ -232,6 +229,24 @@ function Pad({width, height}) {
               setStarted(true)
               startCell('click', cellId)
             },
+            
+            onMouseUp:(e)=>{
+              e.cancelBubble=true
+              stopCell('click', cellId)
+              setStarted(false)
+            },
+            
+            onTouchStart:(e:any)=>{
+              // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
+              startCell(e.pointerId, cellId)
+              // startCell(cellId, cell)
+            },
+            onTouchEnd: (e:any)=>{
+              stopCell(e.pointerId, cellId)
+            },
+            
+          }:{};
+          let effectsMove = selectedCells.includes(noteLabel)? {
             onMouseMove:(e)=>{
               e.cancelBubble = true
               if (started){
@@ -239,17 +254,6 @@ function Pad({width, height}) {
                 
                 // console.log('move',e, )
               }
-            },
-            onMouseEnter:()=>{
-              if (started){
-                // setMove('click', null)
-                startCell('click', cellId)
-              }
-            },
-            onMouseUp:(e)=>{
-              e.cancelBubble=true
-              stopCell('click', cellId)
-              setStarted(false)
             },
             onTouchMove:(e:any)=>{
               e.evt.preventDefault()
@@ -262,21 +266,19 @@ function Pad({width, height}) {
                 startCell(e.pointerId, cellId)
               }
             },
-            onTouchStart:(e:any)=>{
-              // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
-              startCell(e.pointerId, cellId)
-              // startCell(cellId, cell)
+            onMouseEnter:()=>{
+              if (started){
+                // setMove('click', null)
+                startCell('click', cellId)
+              }
             },
-            onTouchEnd: (e:any)=>{
-              stopCell(e.pointerId, cellId)
-            },
-            onDblTap: (e)=>setKey(noteLabel),
-            onDblClick: (e)=>setKey(noteLabel)
           }:{}
           return (
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={`${cell.note}-g`}
+            onDblTap={(e)=>setKey(noteLabel)}
+            onDblClick={(e)=>setKey(noteLabel)}
             > 
             {
            
@@ -299,8 +301,9 @@ function Pad({width, height}) {
                 // scaleY={cell.isDragging ? 1.2 : 1}
                 // onDragStart={handleDragStart}
                 // onDragEnd={handleDragEnd}
-                label={`${cell.note} ${noteLabel}`}
+                label={`${noteLabel} (${cell.note})`}
                 effects={effects}
+                effectsMove={effectsMove}
               />}
           {/*  */}
           </Group>
@@ -310,13 +313,27 @@ function Pad({width, height}) {
   );
 }
 const RectWithLabel = (props: {orientation?:keyof typeof DIRECTIONS,side:number,offsetRect:number}&RectConfig&TextProps)=>{
-  let {side, effects,  label, textProps, offsetRect, ...otherProps} = props
-  return <Group>
+  let {side, effects, effectsMove,orientation, label, textProps, offsetRect, ...otherProps} = props
+  const textPositionOffset = useMemo(()=>{
+    switch(orientation){
+      case "S":
+        return {x:offsetRect, y:(3/2)*offsetRect}
+      case "N":
+        return {x:offsetRect, y:(1/2)*offsetRect}
+      case "E":
+        return {x:offsetRect, y:offsetRect}
+      case "O":
+        return {x:(1/2)*offsetRect, y:offsetRect}
+      default: 
+        return {x: offsetRect, y:offsetRect}
+    }
+  },[orientation, offsetRect])
+  return <Group {...effects}>
       <RectBuffer buffer={0} rotation={45} side={side}
-            orientation={props.orientation}
-            {...otherProps} x={offsetRect}/>
-      <RectBuffer buffer={0.25} rotation={45} side={side} {...otherProps} x={offsetRect} orientation={props.orientation} {...effects} opacity={0}/>
-      <Text {...textProps} x={offsetRect} y={offsetRect} text={label}/>
+            orientation={props.orientation} 
+            {...otherProps} x={offsetRect} />
+      <RectBuffer buffer={0.25} rotation={45} side={side} {...otherProps} x={offsetRect} orientation={orientation}  {...effectsMove} opacity={0} strokeWidth={0}/>
+      <Text {...textProps} x={textPositionOffset.x} y={textPositionOffset.y} text={label}/>
     </Group>
 }
 
@@ -334,46 +351,49 @@ const RectBuffer = ({side, buffer, orientation, ...props})=>{
   let points:any[] = [] // [x0(1), y0(1), x1(1), y1(1), x2(1), y2(1), x3(1), y3(1),]
   // if (excludedOrientations){}
   // let bufferO, bufferE, bufferN, bufferS
+  
+  let bufferO = orientation==='E'?0:buffer
+  let bufferE = orientation==='O'?0:buffer
   if (orientation!=="E") points.push([x3(1-buffer), y3(1-buffer), x0(buffer), y0(buffer), ])
-  if (orientation!=="N") points.push([x0(1-buffer), y0(1-buffer), x1(buffer), y1(buffer),])
+  if (orientation!=="N") points.push([x0(1-bufferO), y0(1-buffer), x1(buffer), y1(bufferE),])
   if (orientation!=="O") points.push([x1(1-buffer), y1(1-buffer), x2(buffer), y2(buffer), ])
-  if (orientation!=="S") points.push([x2(1-buffer), y2(1-buffer), x3(buffer), y3(buffer), ])
+  if (orientation!=="S") points.push([x2(1-bufferE), y2(1-buffer), x3(buffer), y3(bufferO), ])
   // [0,side,side,side,side,0,0,0]
   return <Line closed points={points.flat()} rotation={45} {...props}/>
 }
-// type TriangleProps = {offsetTriangle:number,side:number,orientation:string}&LineConfig
+// type TriangleProps = {offsetRect:number,side:number,orientation:string}&LineConfig
 type TextProps = {label:string, textProps?:TextConfig}
 // const TriangleWithLabel = (props: TriangleProps&TextProps)=>{
 //   let {label, textProps, ...otherProps} = props
-//   let {orientation, offsetTriangle} = otherProps
+//   let {orientation, offsetRect} = otherProps
 //   const textPositionOffset = useMemo(()=>{
 //     switch(orientation){
 //       case "S":
-//         return {x:offsetTriangle, y:(3/2)*offsetTriangle}
+//         return {x:offsetRect, y:(3/2)*offsetRect}
 //       case "N":
-//         return {x:offsetTriangle, y:(1/2)*offsetTriangle}
+//         return {x:offsetRect, y:(1/2)*offsetRect}
 //       case "E":
-//         return {x:offsetTriangle, y:offsetTriangle}
+//         return {x:offsetRect, y:offsetRect}
 //       case "O":
-//         return {x:(1/2)*offsetTriangle, y:offsetTriangle}
+//         return {x:(1/2)*offsetRect, y:offsetRect}
 //     }
-//   },[orientation, offsetTriangle])
+//   },[orientation, offsetRect])
 //   return <Group>
 //       <RectBuffer buffer={0.25} {...otherProps}/>
 //       <Text {...textProps} text={label} {...textPositionOffset}/>
 //     </Group>
 // }
 // const Triangle = (props: TriangleProps)=>{
-//   let {offsetTriangle, side, buffer, orientation, ...lineProps} = props
+//   let {offsetRect, side, buffer, orientation, ...lineProps} = props
 //   switch(orientation){
 //     case "O":
-//       return <Line closed x={offsetTriangle} points={[0,side,side,side,0,0]} rotation={45} {...lineProps}/>
+//       return <Line closed x={offsetRect} points={[0,side,side,side,0,0]} rotation={45} {...lineProps}/>
 //     case "E":
-//       return <Line closed x={offsetTriangle} points={[side,0,side,side,0,0]} rotation={45} {...lineProps}/>
+//       return <Line closed x={offsetRect} points={[side,0,side,side,0,0]} rotation={45} {...lineProps}/>
 //     case "N":
-//       return <Line closed y={offsetTriangle} points={[side,0,side,side,0,0]} rotation={-45} {...lineProps}/>
+//       return <Line closed y={offsetRect} points={[side,0,side,side,0,0]} rotation={-45} {...lineProps}/>
 //     case "S":
-//       return <Line closed y={offsetTriangle}  points={[0,side,side,side,0,0]} rotation={-45} {...lineProps}/>
+//       return <Line closed y={offsetRect}  points={[0,side,side,side,0,0]} rotation={-45} {...lineProps}/>
 //     default:
 //       return null
 //   }
