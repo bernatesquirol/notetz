@@ -1,3 +1,6 @@
+[] Compatibility
+    [] Ipad error -> ga error
+    [] Safari not loading
 [] IO
     [x] Disable not in key notes
     [x] Swipe mantain
