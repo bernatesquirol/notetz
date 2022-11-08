@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Group, Line } from 'react-konva';
 import { Midi, Scale, Note, Interval } from "@tonaljs/tonal";
@@ -150,6 +150,7 @@ function Pad({width, height}) {
   const startCell = useCallback((touchId, cellId)=>{
     try{
       console.log('start',touchId, cellId)
+      if (touchId == null) throw Error('start: more than 8')
       setActiveVoices((activeV)=>{
         if (!activeV[touchId]||activeV[touchId]!==cellId){
           return {...activeV, [touchId]: cellId}
@@ -162,7 +163,9 @@ function Pad({width, height}) {
   },[setActiveVoices])
   const stopCell = useCallback((touchId, cellId?)=>{
     try{
+
     console.log('stop', touchId, cellId)
+    if (touchId == null) throw Error('stop: more than 8')
     setActiveVoices((activeV)=>{
       if (activeV[touchId]){
         let newActiveV = {...activeV, [touchId]: null}
@@ -180,7 +183,7 @@ function Pad({width, height}) {
     if (notesFreq.length>0){
       let toRender = notesFreq.map((n)=>n.freq?synthFunc(n as {freq:number,key:string}): el.constant({value:0})) 
       let out = el.add(...toRender)
-      console.log('rendering', JSON.stringify(toRender))
+      // console.log('rendering', JSON.stringify(toRender))
       core.render(out, out)
     }
   },[core])
@@ -190,7 +193,7 @@ function Pad({width, height}) {
         return {freq:cellId?Midi.midiToFreq(Midi.toMidi(cells[cellId].note)!):null, key:`${touchId}`}
       // })
     })).flat()
-    // console.log('rendering', voices)
+    console.log('render', activeVoices)
     play(voices)
   },[activeVoices, cells, play])
   const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
@@ -201,14 +204,29 @@ function Pad({width, height}) {
     // console.log(notes)
     return notes
   },[selectedRoot, selectedScale])
- 
+  const refTouches = useRef<object>()
+
+  const getTouchKey = useCallback((touchId)=>{
+    if (!refTouches.current) refTouches.current = {}
+    console.log(refTouches.current)
+    if (refTouches.current[touchId]!=null){
+      return refTouches.current[touchId]
+    }else{
+      let range08 = [0,1,2,3,4,5,6,7,8]
+      // Object.keys(refTouches)
+      let newId = range08.find(id=>!activeVoices[id])
+      refTouches.current[touchId]=newId
+      // console.log(touchId, newId)
+    }
+    return refTouches.current[touchId]
+  },[activeVoices])
   return (
     <>
     {/* {JSON.stringify(moveDirections)} */}
     {/* <SelectSimple options={Scale.names()} onChange={(e)=>setScale(e.target.value)}></SelectSimple> */}
     <Stage width={width} height={height} 
       // onTouchMove={(e:any)=>{
-      //   if (activeVoices[e.pointerId]) stopCell(e.pointerId)
+      //   if (activeVoices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
       // }}
       onMouseMove={(e:any)=>{
         // if (activeVoices['click']) stopCell('click')
@@ -218,7 +236,7 @@ function Pad({width, height}) {
         setStarted(false)
       }}
       onTouchEnd={(e: any)=>{
-        if (activeVoices[e.pointerId]) stopCell(e.pointerId)
+        if (activeVoices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
       }}
       >
       <Layer >
@@ -239,11 +257,11 @@ function Pad({width, height}) {
             
             onTouchStart:(e:any)=>{
               // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
-              startCell(e.pointerId, cellId)
+              startCell(getTouchKey(e.pointerId), cellId)
               // startCell(cellId, cell)
             },
             onTouchEnd: (e:any)=>{
-              stopCell(e.pointerId, cellId)
+              stopCell(getTouchKey(e.pointerId), cellId)
             },
             
           }:{};
@@ -259,12 +277,12 @@ function Pad({width, height}) {
             onTouchMove:(e:any)=>{
               e.evt.preventDefault()
               e.cancelBubble=true
-              if(activeVoices[e.pointerId]===cellId){
-                // setMove(e.pointerId, {x:e.evt.clientX, y:e.evt.clientY})
-                // console.log('move', e.pointerId, cellId)
+              if(activeVoices[getTouchKey(e.pointerId)]===cellId){
+                // setMove(getTouchKey(e.pointerId), {x:e.evt.clientX, y:e.evt.clientY})
+                // console.log('move', getTouchKey(e.pointerId), cellId)
               }else{
-                // setMove(e.pointerId, null)
-                startCell(e.pointerId, cellId)
+                // setMove(getTouchKey(e.pointerId), null)
+                startCell(getTouchKey(e.pointerId), cellId)
               }
             },
             onMouseEnter:()=>{
