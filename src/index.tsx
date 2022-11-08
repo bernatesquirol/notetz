@@ -10,7 +10,7 @@ declare global {
   }
 }
 var AudioContext = window.AudioContext // Default
-   // Safari and old versions of Chrome
+    || window.webkitAudioContext // Safari and old versions of Chrome
 const audioContext: AudioContext = new AudioContext({
   latencyHint: "interactive",
   sampleRate: 44100,
@@ -47,6 +47,4 @@ main()
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
-window.onerror = (event, source, lineno, colno, error)=>{
-  console.log("ERROR!", event, source)
-}
+

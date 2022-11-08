@@ -180,6 +180,7 @@ function Pad({width, height}) {
     if (notesFreq.length>0){
       let toRender = notesFreq.map((n)=>n.freq?synthFunc(n as {freq:number,key:string}): el.constant({value:0})) 
       let out = el.add(...toRender)
+      console.log('rendering', JSON.stringify(toRender))
       core.render(out, out)
     }
   },[core])
