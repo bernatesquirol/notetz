@@ -147,7 +147,7 @@ function Pad({width, height}) {
     try{
       console.log('start',touchId, cellId)
       if (touchId == null) throw Error('start: more than 8')
-      toggleVoice(touchId, {id:cellId, freqs:[toFreq(cellId), 440]})
+      toggleVoice(touchId, {id:cellId, freqs:[toFreq(cellId)]})
     }catch(ex){
       console.warn('ERROR',ex)
     }
