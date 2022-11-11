@@ -1,5 +1,13 @@
-import { Chord, Note, Scale } from "@tonaljs/tonal";
+import { Chord, Interval, Note, Scale } from "@tonaljs/tonal";
 import tree from "./tree.json";
+export const getSharpValue = (noteLabel)=>{
+  let simplified = Note.simplify(noteLabel)
+  
+  if (simplified.includes('b')){
+    return `${Note.transposeBy(Interval.fromSemitones(-1))(simplified)}#`
+  }
+  return simplified
+}
 // import dagre from "dagre";
 // const dagreGraph = new dagre.graphlib.Graph();
 // dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -37,6 +45,21 @@ import tree from "./tree.json";
 // const createTreeChords = (listOfChords)=>{
 //     listOfChords.
 // }
+// function dec2bin(dec) {
+//   return (dec >>> 0).toString(2);
+// }
+// function chromaAnd(chroma1, chroma2){
+//   return dec2bin(parseInt(chroma1, 2) & parseInt(chroma2, 2))
+// }
+// seqChroma: 111 -> 3 notes
+function getChordFactory(sequentialChroma){
+  return (notes, base)=>{
+    let index = notes.indexOf(base)
+    let chromaLocal = [...notes.slice(index), ...notes.slice(0,index)]
+    return [...sequentialChroma].map((d, i)=>d?chromaLocal[i]:null).filter(d=>d)
+  }
+}
+
 export const createMapChords = (scale, key, nodeWidth, nodeHeight)=>{
     let originNode = ({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
     let chordsNode = Scale.scaleChords(scale).map((c, i, list)=>{
@@ -53,12 +76,34 @@ export const createMapChords = (scale, key, nodeWidth, nodeHeight)=>{
     //({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
     return {nodes, edges}
 }
+const indexOfWithOp = (list, value, op="==")=>{
+  for(let i=0; i<list.length;i++){
+    switch(op){
+      case ">":
+        if (value > list[i]){
+          return i
+        } 
+        break
+      case "<":
+        if (value < list[i]){
+          return i
+        } 
+        break
+      default:
+        if (value ===list[i]){
+          return i
+        }
+        break
+    }
+  }
+  return list.length
+}
 export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
-  let originNode = ({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
+  let originNode = ({ id: scale, data: { scale, root: key, selected: true }, position:{x:0, y: 0}, type: "scaleNode" });
   let modeChroma = Scale.get(scale).chroma;
   let intChroma = parseInt(modeChroma, 2);
   let nodesDict = {}
-  // 
+  let thirdFactory = getChordFactory('111')
   Scale.modeNames(scale).forEach(([interval, mode]: any) => {
       // check modes correctly!! split is shit
       if (scale !== mode) {
@@ -66,16 +111,14 @@ export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
         // let dist = levenshtein.get(modeChroma, chroma)
         let intMode = parseInt(chroma, 2);
         if (!nodesDict['modesSameKey']) nodesDict['modesSameKey'] = []
-        nodesDict['modesSameKey'].push({ id: `${mode}-${key}`, data:{scale:mode, root:key, intMode},  type: "scaleNode" })
+        nodesDict['modesSameKey'].push({ id: `${mode}-${key}-modesSameKey`, data:{scale:mode, root:key, intMode},  type: "scaleNode" })
         if (!nodesDict['modesSameNotes']) nodesDict['modesSameNotes'] = []
-        nodesDict['modesSameNotes'].push({ id:`${mode}-${Note.transpose(key, interval)}`,data:{scale:mode, root:Note.transpose(key, interval), intMode}, type: "scaleNode" })
+        let note = getSharpValue(Note.transpose(key, interval))
+        nodesDict['modesSameNotes'].push({ id:`${mode}-${note}-modesSameNotes`,data:{scale:mode, root:note, intMode}, type: "scaleNode" })
       // if (intMode > intChroma) {
       }
       
     });
-  
-
-  // north is S i S is N
   
   nodesDict['modesSameKey'].sort(
     ({ data :{ intMode: intModeA }}, { data : {intMode: intModeB }}) => intModeA - intModeB
@@ -83,57 +126,50 @@ export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
   nodesDict['modesSameNotes'].sort(
     ({ data:{intMode: intModeA }}, { data:{intMode: intModeB }}) => intModeA - intModeB
   )
-  nodesDict['modesSameKey'] = nodesDict['modesSameKey'].map((n:any, i)=>({
+  let originIndexSameKey = indexOfWithOp(nodesDict['modesSameKey'].map(({data:{intMode}})=>intMode), intChroma, "<")
+  let originIndexSameNotes = indexOfWithOp(nodesDict['modesSameNotes'].map(({data:{intMode}})=>intMode), intChroma, "<")
+  nodesDict['modesSameKey'] = nodesDict['modesSameKey'].map((n:any, i)=>{
+    return {
     ...n,
-    position:{
-      x: originNode.position.x*2,
-      y: originNode.position.y + nodeHeight * 1.2 * (i + 1)
+    data: {
+      ...n.data,
+      row: i>=originIndexSameKey?i-originIndexSameNotes+1:i-originIndexSameNotes,
+      col:0,
+
     }
-  }))
-  nodesDict['modesSameNotes'] = nodesDict['modesSameKey'].map((n:any, i)=>({
+  }
+  })
+  nodesDict['modesSameNotes'] = nodesDict['modesSameNotes'].map((n:any, i)=>({
     ...n,
-    position:{
-      x: originNode.position.x*3,
-      y: originNode.position.y + nodeHeight * 1.2 * (i + 1)
+    data: {
+      ...n.data,
+      row: i>=originIndexSameKey?i-originIndexSameNotes+1:i-originIndexSameNotes,
+      col: 1
     }
+    // position:{
+    //   x: originNode.position.x*3,
+    //   y: originNode.position.y + nodeHeight * 1.2 * (i + 1)
+    // }
   }))
-  // let nodesNorth = N.map((p: any, i) =>
-  //   ({
-  //     id: p.mode,
-  //     type: "modeNode",
-  //     data: { scale: p.mode, root: key, interval: p.interval },
-  //     position: {
-  //       x: originNode.position.x,
-  //       y: originNode.position.y + nodeHeight * 1.2 * (i + 1),
-  //     },
-  //   })
-  // );
-  // let S = modes.S;
-  // S.sort(
-  //   ({ intMode: intModeA }, { intMode: intModeB }) => intModeB - intModeA
-  // );
-  // let nodesSouth = S.map((p, i) =>
-  //   ({
-  //     id: p.mode,
-  //     type: "modeNode",
-  //     data: { scale: p.mode, root: key, interval: p.interval },
-  //     position: {
-  //       x: originNode.position.x,
-  //       y: originNode.position.y - nodeHeight * 1.2 * (i + 1),
-  //     },
-  //   })
-  // );
-  let newNodes = Object.values(nodesDict).flat();
-  // newNodes.forEach(({ id }) => {
-  //   let { children, parents } = tree[id];
-  //   let edgesChildren = children.map((c) => {
-  //     return { id: `${id}-${c}`, source: `${id}`, target: `${c}` };
-  //   });
-  //   let edgesParents = parents.map((p) => {
-  //     return { id: `${p}-${id}`, source: `${p}`, target: `${id}` };
-  //   });
-  //   // edges = [...edges, ...edgesChildren, ...edgesParents];
-  // });
+  nodesDict['circleOfFifths'] = []
+  for (let i of [1,2,3,4,5,6]){
+    let note = getSharpValue(Note.transposeBy(Interval.fromSemitones(-5*i))(key))
+    nodesDict['circleOfFifths'].push({ id: `${scale}-${note}-circleOfFifths`, data:{scale, root:note, intChroma, row:(i), col:-1},  type: "scaleNode" })
+    if (i!==6){
+      let note2 = getSharpValue(Note.transposeBy(Interval.fromSemitones(5*i))(key))
+      nodesDict['circleOfFifths'].push({ id: `${scale}-${note2}-circleOfFifths`, data:{scale, root:note2, intChroma, row:-(i), col:-1},  type: "scaleNode" })
+    }
+  }
+  
+  let newNodes = Object.values(nodesDict).flat().map((n:any)=>{
+    let {data:{row,col,root,scale }} = n
+    n.position={
+      y: row*nodeHeight*1.2,
+      x: col*nodeWidth*1.2
+    }
+    return n
+  });
+  
   let nodes = [originNode, ...newNodes];
   return {nodes}
 }

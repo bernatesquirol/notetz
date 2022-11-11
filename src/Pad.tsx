@@ -1,21 +1,16 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Group, Line } from 'react-konva';
-import { Midi, Scale, Note, Interval } from "@tonaljs/tonal";
+import { Midi, Scale } from "@tonaljs/tonal";
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
-import {el} from '@elemaudio/core';
-import { ElementaryAudioContext } from '.';
 import { FlowSelectorContext } from './FlowSelector';
+import { getSharpValue } from './utilsTonal';
+import { ElementaryContext } from './Intro';
+
 const minNote = 60
 const maxNote = 84
-const getSharpValue = (noteLabel)=>{
-  let simplified = Note.simplify(noteLabel)
-  if (simplified.includes('b')){
-    return `${Note.transposeBy(Interval.fromSemitones(-1))(simplified)}#`
-  }
-  return simplified
-}
+
 const range = (min: number, max: number)=>{
   return (new Array(max-min)).fill(1).map((i,j)=>j+min)
 }
@@ -33,9 +28,7 @@ export const DIRECTIONS = {
 
 const multiply = (dir, num)=>({...dir,x:dir.x*num, y:dir.y*num})
 const add = (dir, dir2)=>({...dir,x:dir.x+dir2.x, y:dir.y+dir2.y})
-const synthFunc = (props: {freq: number, key: string})=>{
-  return el.mul(el.cycle(el.const({value: props.freq, key:props.key})), 0.2)
-}
+
 
 export const NOTE_DELTA = {
   0: [],
@@ -87,6 +80,7 @@ const getCells = (note, numBase, base={x:0,y:0}, offset=0)=>{
   if (offset){
     dirModule = add(dirModule, multiply(cicle,offset))
   }
+  
   let norths = multiply(DIRECTIONS.N, numN)
   let finalDir = add(norths, dirModule)
   let cell = add(base, finalDir)
@@ -126,7 +120,10 @@ function Pad({width, height}) {
     return generateGrid()
   },[])
   const [cells, ] = React.useState(grid);
-  
+  const {toggleVoice, voices} = useContext(ElementaryContext)
+  const toFreq = useCallback((cellId)=>{
+    return Midi.midiToFreq(Midi.toMidi(cells[cellId].note)!)
+  },[cells])
   const {squareSize, offset, extraX, extraY} = useMemo(()=>{
     let [numW,numH] = ([(1+maxX-minX),1+maxY-minY])
     // console.log(width/numW, numW, height/numH, numH)
@@ -140,63 +137,37 @@ function Pad({width, height}) {
       extraY = height-cellD*numH
     }
     let cellLat = cellD/Math.SQRT2
-    let offset = cellD/2//cellLat*(1-Math.cos(Math.PI/4))
-    return {squareSize: cellLat, offset, extraX, extraY}
-    // return {widthCell: cellLat,heightCell: cellLat}
+    let offset = cellD/2
+    return {squareSize: cellLat, offset, extraX, extraY}    
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
   // const ScaleInput = useMemo(()=>(),[])
-  const [activeVoices, setActiveVoices] = useState<Record<string,string|null>>({})
+  // const [voices, setActiveVoices] = useState<Record<string,string|null>>({})
   const startCell = useCallback((touchId, cellId)=>{
     try{
       console.log('start',touchId, cellId)
       if (touchId == null) throw Error('start: more than 8')
-      setActiveVoices((activeV)=>{
-        if (!activeV[touchId]||activeV[touchId]!==cellId){
-          return {...activeV, [touchId]: cellId}
-        }
-        return activeV
-      })
+      toggleVoice(touchId, {id:cellId, freqs:[toFreq(cellId), 440]})
     }catch(ex){
       console.warn('ERROR',ex)
     }
-  },[setActiveVoices])
+  },[toggleVoice, toFreq])
   const stopCell = useCallback((touchId, cellId?)=>{
     try{
-
-    console.log('stop', touchId, cellId)
-    if (touchId == null) throw Error('stop: more than 8')
-    setActiveVoices((activeV)=>{
-      if (activeV[touchId]){
-        let newActiveV = {...activeV, [touchId]: null}
-        return newActiveV
-      }
-      return activeV
-    })}catch(ex){
+      console.log('stop', touchId, cellId)
+      if (touchId == null) throw Error('stop: more than 8')
+      toggleVoice(touchId, {id: touchId, freqs: null})
+    }catch(ex){
       console.warn('ERROR',ex)
     }
-  },[setActiveVoices])
-  const {core} = useContext(ElementaryAudioContext)
-  const play = useCallback((notesFreq: {freq: number|null,key:string}[])=>{
-    if (!notesFreq) notesFreq = []
-    if (!Array.isArray(notesFreq)) notesFreq = [notesFreq]
-    if (notesFreq.length>0){
-      let toRender = notesFreq.map((n)=>n.freq?synthFunc(n as {freq:number,key:string}): el.constant({value:0})) 
-      let out = el.add(...toRender)
-      // console.log('rendering', JSON.stringify(toRender))
-      core.render(out, out)
-    }
-  },[core])
-  useEffect(()=>{
-    let voices = Object.entries(activeVoices).map((([touchId,cellId]: any)=>{
-      // return values.map((v,i)=>{
-        return {freq:cellId?Midi.midiToFreq(Midi.toMidi(cells[cellId].note)!):null, key:`${touchId}`}
-      // })
-    })).flat()
-    console.log('render', activeVoices)
-    play(voices)
-  },[activeVoices, cells, play])
-  const activeCells = useMemo(()=>Object.fromEntries(Object.entries(activeVoices).map(([k,v])=>([v,k]))),[activeVoices])
+  },[toggleVoice])
+  
+ 
+  const activeCells = useMemo(()=>{
+    let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v]: any)=>([v.id, k])).filter(d=>d))
+    return active
+  },
+  [voices])
   const {scale: selectedScale, key: selectedRoot, setKey} = FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
@@ -208,35 +179,34 @@ function Pad({width, height}) {
 
   const getTouchKey = useCallback((touchId)=>{
     if (!refTouches.current) refTouches.current = {}
-    console.log(refTouches.current)
     if (refTouches.current[touchId]!=null){
       return refTouches.current[touchId]
     }else{
       let range08 = [0,1,2,3,4,5,6,7,8]
       // Object.keys(refTouches)
-      let newId = range08.find(id=>!activeVoices[id])
+      let newId = range08.find(id=>!voices[id])
       refTouches.current[touchId]=newId
       // console.log(touchId, newId)
     }
     return refTouches.current[touchId]
-  },[activeVoices])
+  },[voices])
   return (
     <>
     {/* {JSON.stringify(moveDirections)} */}
     {/* <SelectSimple options={Scale.names()} onChange={(e)=>setScale(e.target.value)}></SelectSimple> */}
     <Stage width={width} height={height} 
       // onTouchMove={(e:any)=>{
-      //   if (activeVoices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
+      //   if (voices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
       // }}
       onMouseMove={(e:any)=>{
-        // if (activeVoices['click']) stopCell('click')
+        // if (voices['click']) stopCell('click')
       }}
       onMouseUp={(e)=>{
-        if (activeVoices['click']) stopCell('click')
+        if (voices['click']) stopCell('click')
         setStarted(false)
       }}
       onTouchEnd={(e: any)=>{
-        if (activeVoices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
+        if (voices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
       }}
       >
       <Layer >
@@ -277,7 +247,7 @@ function Pad({width, height}) {
             onTouchMove:(e:any)=>{
               e.evt.preventDefault()
               e.cancelBubble=true
-              if(activeVoices[getTouchKey(e.pointerId)]===cellId){
+              if(voices[getTouchKey(e.pointerId)]===cellId){
                 // setMove(getTouchKey(e.pointerId), {x:e.evt.clientX, y:e.evt.clientY})
                 // console.log('move', getTouchKey(e.pointerId), cellId)
               }else{
