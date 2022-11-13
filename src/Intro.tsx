@@ -13,7 +13,7 @@ export const ElementaryContext = React.createContext({voices: {} as Record<strin
 const synthFunc = (props: {freq: number, key: string})=>{
   return el.mul(el.cycle(el.const({value: props.freq, key:props.key})), 0.2)
 }
-export type Voice = {freq: number, cellId: string}
+export type Voice = {freq: number, id: string}
 export const ElementaryContextProvider = ({children})=>{
   const [voices, setVoices] = useState<Record<string,Voice[]>>({})
   const toggleVoice = useCallback((key, voice: null|Voice[]|((voices:Voice[])=>void))=>{
@@ -37,7 +37,7 @@ export const ElementaryContextProvider = ({children})=>{
     
     if (!notesFreq) notesFreq = []
     if (notesFreq.length>0){
-      let toRender = notesFreq.map((n)=>n.voices?n.voices.map((v,i)=>synthFunc({freq: v.freq, key:`${n.key}-${v.cellId}`} as {freq:number,key:string})): el.constant({value:0})).flat() 
+      let toRender = notesFreq.map((n)=>n.voices?n.voices.map((v,i)=>synthFunc({freq: v.freq, key:`${n.key}-${v.id}`} as {freq:number,key:string})): el.constant({value:0})).flat() 
       let out = el.add(...toRender)
       console.log('rendering', notesFreq)
       core.render(out, out)

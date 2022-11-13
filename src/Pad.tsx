@@ -93,7 +93,7 @@ function generateGrid(listNotes): {grid:Record<string,{x:number,y:number,note:nu
   let minNote = Math.min(...listNotes)
   let root = {x:0, y:0}
   let result = listNotes.reduce((acc,note)=>{
-    let cells = getCells(note, minNote, root).map(r=>({...r,note,label:Midi.midiToNoteName(note, { pitchClass: true, sharps: true })}))
+    let cells = getCells(note, minNote, root).map(r=>({...r, note, label:Midi.midiToNoteName(note, { pitchClass: true, sharps: true })}))
     return [...acc, ...cells]
   },[] as any[])
   let xs = result.filter(p=>!p.orientation).map((p:any)=>p.x)
@@ -110,7 +110,6 @@ export function PlayingPad({width, height, notes}){
   const {toggleVoice, voices} = useContext(ElementaryContext)
   const startCell = useCallback((touchId, cell)=>{
     try{
-      console.log('start',touchId, cell.id)
       if (touchId == null) throw Error('start: more than 8')
       toggleVoice(touchId, [{id:cell.note, freq:toFreq(cell.note)}])
     }catch(ex){
@@ -119,7 +118,6 @@ export function PlayingPad({width, height, notes}){
   },[toggleVoice])
   const stopCell = useCallback((touchId)=>{
     try{
-      console.log('stop', touchId,)
       if (touchId == null) throw Error('stop: more than 8')
       toggleVoice(touchId, null)
     }catch(ex){
@@ -128,13 +126,18 @@ export function PlayingPad({width, height, notes}){
   },[toggleVoice])
   const {setKey} = FlowSelectorContext.useFlowSelectorContext()
   const onDblHitCell = useCallback((cell)=>setKey(cell.label),[setKey])
-  return <Pad {...{width, height, notes, voices, startCell, stopCell, onDblHitCell}} style={{
+  const activeCells = useMemo(()=>{
+    let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v])=>(v?.map(voice=>([voice.id, k])))).flat().filter(d=>d))
+    return active
+  },
+  [voices])
+  return <Pad {...{width, height, notes, voices, startCell, stopCell, onDblHitCell, activeCells}} style={{
     shadowBlur:10,
     shadowOpacity: 0.6
   }} ></Pad>
 }
 
-export function Pad({width, height, notes, voices, stopCell, startCell, onDblHitCell, style}: {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object}) {
+export function Pad({width, height, notes, voices, stopCell, startCell, onDblHitCell, style, activeCells}: {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object, activeCells?:Record<number|string, string>}) {
 
   const {grid:cells, minX, maxX, minY, maxY} = useMemo(()=>{
     return generateGrid(notes)
@@ -157,17 +160,10 @@ export function Pad({width, height, notes, voices, stopCell, startCell, onDblHit
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
   // const ScaleInput = useMemo(()=>(),[])
-  
-  const activeCells = useMemo(()=>{
-    let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v])=>(v?.map(voice=>([voice.cellId, k])))).flat().filter(d=>d))
-    return active
-  },
-  [voices])
   const {scale: selectedScale, key: selectedRoot} = FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
     let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)
-    // console.log(notes)
     return notes
   },[selectedRoot, selectedScale])
   const refTouches = useRef<object>()
@@ -278,7 +274,7 @@ export function Pad({width, height, notes, voices, stopCell, startCell, onDblHit
                 strokeWidth={selectedRoot===noteLabel?1.5:0}
                 stroke={selectedRoot===noteLabel?'black':undefined}
                 fill={selectedCells.includes(noteLabel)?"hsl(178, 78%, 40%)":"hsl(77, 78%, 40%)"} 
-                opacity={activeCells[cellId]?1:0.7}
+                opacity={activeCells && activeCells[cell.note]?1:0.7}
                 // draggable
                 
                 // scaleX={cell.isDragging ? 1.2 : 1}

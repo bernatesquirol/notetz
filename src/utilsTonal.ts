@@ -165,6 +165,6 @@ export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
     return n
   });
   
-  let nodes = [originNode, ...newNodes];
+  let nodes = [originNode, ...newNodes];//]//
   return {nodes}
 }
