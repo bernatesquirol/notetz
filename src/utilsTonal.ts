@@ -1,5 +1,5 @@
-import { Chord, Interval, Note, Scale } from "@tonaljs/tonal";
-import tree from "./tree.json";
+import { Interval, Midi, Note, Scale } from "@tonaljs/tonal";
+import { defaultOctave } from "./Intro";
 export const getSharpValue = (noteLabel)=>{
   let simplified = Note.simplify(noteLabel)
   
@@ -52,30 +52,19 @@ export const getSharpValue = (noteLabel)=>{
 //   return dec2bin(parseInt(chroma1, 2) & parseInt(chroma2, 2))
 // }
 // seqChroma: 111 -> 3 notes
-function getChordFactory(sequentialChroma){
-  return (notes, base)=>{
-    let index = notes.indexOf(base)
-    let chromaLocal = [...notes.slice(index), ...notes.slice(0,index)]
-    return [...sequentialChroma].map((d, i)=>d?chromaLocal[i]:null).filter(d=>d)
-  }
+export function getChord(base, scale, sequentialChroma, baseOctave=defaultOctave){
+  let baseSharp = getSharpValue(base)
+  let notes = scale.notes.map(n=>getSharpValue(n))
+  let index = notes.indexOf(baseSharp)
+  let chromaLocal = [...notes.slice(index).map(n=>[n,0]), ...notes.slice(0,index).map(n=>[n,1])]
+  let notesObjs = [...sequentialChroma].map((d, i)=>d==='1'?chromaLocal[i]:null).filter(d=>d).map(([n, extraOctave])=>{
+    return Note.get(`${n}${baseOctave+extraOctave}`)
+  })
+  return notesObjs
+
 }
 
-export const createMapChords = (scale, key, nodeWidth, nodeHeight)=>{
-    let originNode = ({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
-    let chordsNode = Scale.scaleChords(scale).map((c, i, list)=>{
-        let angle = 2*Math.PI*i/list.length
-        let chord = Chord.getChord(c,key)
-        return ({ 
-            id: chord.symbol, 
-            data: { chord:c, key, notes: chord.notes }, 
-            position:{x:4*nodeWidth*Math.cos(angle), y: nodeWidth*Math.sin(angle)}, 
-            type: "chordNode" })
-    })
-    let nodes = [originNode, ...chordsNode]
-    let edges = chordsNode.map(c=>({ id: `${scale}-${c.id}`, source: `${scale}`, target: `${c.id}` }));
-    //({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
-    return {nodes, edges}
-}
+
 const indexOfWithOp = (list, value, op="==")=>{
   for(let i=0; i<list.length;i++){
     switch(op){
@@ -98,12 +87,18 @@ const indexOfWithOp = (list, value, op="==")=>{
   }
   return list.length
 }
+export const toFreq = (note)=>{
+  return Midi.midiToFreq(Midi.toMidi(note)!)
+}
+export const toMidi = (noteLabel)=>{
+  return Note.get(noteLabel).midi
+}
 export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
   let originNode = ({ id: scale, data: { scale, root: key, selected: true }, position:{x:0, y: 0}, type: "scaleNode" });
   let modeChroma = Scale.get(scale).chroma;
   let intChroma = parseInt(modeChroma, 2);
   let nodesDict = {}
-  let thirdFactory = getChordFactory('111')
+  // let thirdFactory = getChordFactory('111')
   Scale.modeNames(scale).forEach(([interval, mode]: any) => {
       // check modes correctly!! split is shit
       if (scale !== mode) {
@@ -162,9 +157,9 @@ export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
   }
   
   let newNodes = Object.values(nodesDict).flat().map((n:any)=>{
-    let {data:{row,col,root,scale }} = n
+    let {data:{row,col }} = n
     n.position={
-      y: row*nodeHeight*1.2,
+      y: row*nodeHeight*1.1,
       x: col*nodeWidth*1.2
     }
     return n
@@ -172,110 +167,4 @@ export const createDefinitiveMap = (scale, key, nodeWidth, nodeHeight)=>{
   
   let nodes = [originNode, ...newNodes];
   return {nodes}
-}
-export const createMapScales = (scale, key, nodeWidth, nodeHeight)=>{
-    let { children, parents } = tree[scale];
-    let originNode = ({ id: scale, data: { scale, root: key }, position:{x:0, y: 0}, type: "scaleNode" });
-    let childrenNodes = children.map((k, i, list) =>
-      ({
-        id: k,
-        data: { scale: k, root: key },
-        position: {
-          x: originNode.position.x+nodeWidth*1.5,
-          y: originNode.position.y+(i*nodeHeight*1.5)-(list.length*nodeHeight/2)
-        },
-        type: "scaleNode",
-      })
-    );
-    
-    let parentsNodes = parents.map((k, i, list) =>
-      ({ id: k, 
-        data: { scale: k, root: key },
-        position: {
-          x: originNode.position.x-nodeWidth*1.5,
-          y: originNode.position.y+i*nodeHeight*1.5-(list.length*nodeHeight/2)
-        },
-        type: "scaleNode" 
-      })
-    );
-    
-    let nodes = [...childrenNodes, ...parentsNodes, originNode];
-    // console.log(nodesRaw[0])
-    let edgesChildren = children.map((c) => {
-      return { id: `${scale}-${c}`, source: `${scale}`, target: `${c}` };
-    });
-    let edgesParents = parents.map((p) => {
-      return { id: `${p}-${scale}`, source: `${p}`, target: `${scale}` };
-    });
-    let edges = [...edgesChildren, ...edgesParents];
-    // let {nodes, edges} = getLayoutedElements(
-    //   nodesRaw,
-    //   edgesRaw,
-    //   'LR'
-    // );
-    let modeChroma = Scale.get(scale).chroma;
-    let intChroma = parseInt(modeChroma, 2);
-    let modes = Scale.modeNames(scale).reduce(
-      (acc: any, [interval, mode]: any) => {
-        // check modes correctly!! split is shit
-        if (scale === mode) return acc;
-        let chroma = Scale.get(mode).chroma;
-        // let dist = levenshtein.get(modeChroma, chroma)
-        let intMode = parseInt(chroma, 2);
-        if (intMode > intChroma) {
-          // if (!acc.N[dist]) acc.N[dist] = []
-          acc.N.push({ mode, interval, intMode });
-        } else {
-          // if (!acc.S[dist]) acc.S[dist] = []
-          acc.S.push({ mode, interval, intMode });
-        }
-        return acc;
-      },
-      { N: [], S: [] }
-    );
-    // 
-    // north is S i S is N
-    let N = modes.N;
-    N.sort(
-      ({ intMode: intModeA }, { intMode: intModeB }) => intModeA - intModeB
-    );
-    let nodesNorth = N.map((p: any, i) =>
-      ({
-        id: p.mode,
-        type: "modeNode",
-        data: { scale: p.mode, root: key, interval: p.interval },
-        position: {
-          x: originNode.position.x,
-          y: originNode.position.y + nodeHeight * 1.2 * (i + 1),
-        },
-      })
-    );
-    let S = modes.S;
-    S.sort(
-      ({ intMode: intModeA }, { intMode: intModeB }) => intModeB - intModeA
-    );
-    let nodesSouth = S.map((p, i) =>
-      ({
-        id: p.mode,
-        type: "modeNode",
-        data: { scale: p.mode, root: key, interval: p.interval },
-        position: {
-          x: originNode.position.x,
-          y: originNode.position.y - nodeHeight * 1.2 * (i + 1),
-        },
-      })
-    );
-    let newNodes = [...nodesNorth, ...nodesSouth];
-    newNodes.forEach(({ id }) => {
-      let { children, parents } = tree[id];
-      let edgesChildren = children.map((c) => {
-        return { id: `${id}-${c}`, source: `${id}`, target: `${c}` };
-      });
-      let edgesParents = parents.map((p) => {
-        return { id: `${p}-${id}`, source: `${p}`, target: `${id}` };
-      });
-      edges = [...edges, ...edgesChildren, ...edgesParents];
-    });
-    nodes = [...nodes, ...newNodes];
-    return {nodes, edges}
 }

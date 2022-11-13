@@ -5,16 +5,10 @@ import { Midi, Scale } from "@tonaljs/tonal";
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
 import { FlowSelectorContext } from './FlowSelector';
-import { getSharpValue } from './utilsTonal';
-import { ElementaryContext } from './Intro';
+import { getSharpValue, toFreq } from './utilsTonal';
+import { ElementaryContext, Voice } from './Intro';
 
-const minNote = 60
-const maxNote = 84
 
-const range = (min: number, max: number)=>{
-  return (new Array(max-min)).fill(1).map((i,j)=>j+min)
-}
-const prova = range(minNote, maxNote)
 export const DIRECTIONS = {
   SE: {x:0.5,y:-0.5},
   S: {x:0,y:-1},
@@ -93,15 +87,13 @@ const getCells = (note, numBase, base={x:0,y:0}, offset=0)=>{
   return returnVal
 }
 
-
+// type Cell = {note: number}
 const getId = (cell)=>`(x:${cell.x},y:${cell.y})`
-function generateGrid(): {grid:Record<string,{x:number,y:number,note:number}>, minX:number, maxX:number,minY:number,maxY:number} {
-  let minNote = Math.min(...prova)
+function generateGrid(listNotes): {grid:Record<string,{x:number,y:number,note:number}>, minX:number, maxX:number,minY:number,maxY:number} {
+  let minNote = Math.min(...listNotes)
   let root = {x:0, y:0}
-  let result = prova.reduce((acc,note)=>{
-
-    let cells = getCells(note, minNote, root).map(r=>({...r,note}))
-    // let cell2 = getCell(note, minNote, root, 1)
+  let result = listNotes.reduce((acc,note)=>{
+    let cells = getCells(note, minNote, root).map(r=>({...r,note,label:Midi.midiToNoteName(note, { pitchClass: true, sharps: true })}))
     return [...acc, ...cells]
   },[] as any[])
   let xs = result.filter(p=>!p.orientation).map((p:any)=>p.x)
@@ -114,16 +106,39 @@ function generateGrid(): {grid:Record<string,{x:number,y:number,note:number}>, m
   // debugger
   return {grid, minX:0, maxX:maxX, minY:0, maxY}
 }
-
-function Pad({width, height}) {
-  const {grid, minX, maxX, minY, maxY} = useMemo(()=>{
-    return generateGrid()
-  },[])
-  const [cells, ] = React.useState(grid);
+export function PlayingPad({width, height, notes}){
   const {toggleVoice, voices} = useContext(ElementaryContext)
-  const toFreq = useCallback((cellId)=>{
-    return Midi.midiToFreq(Midi.toMidi(cells[cellId].note)!)
-  },[cells])
+  const startCell = useCallback((touchId, cell)=>{
+    try{
+      console.log('start',touchId, cell.id)
+      if (touchId == null) throw Error('start: more than 8')
+      toggleVoice(touchId, [{id:cell.note, freq:toFreq(cell.note)}])
+    }catch(ex){
+      console.warn('ERROR',ex)
+    }
+  },[toggleVoice])
+  const stopCell = useCallback((touchId)=>{
+    try{
+      console.log('stop', touchId,)
+      if (touchId == null) throw Error('stop: more than 8')
+      toggleVoice(touchId, null)
+    }catch(ex){
+      console.warn('ERROR',ex)
+    }
+  },[toggleVoice])
+  const {setKey} = FlowSelectorContext.useFlowSelectorContext()
+  const onDblHitCell = useCallback((cell)=>setKey(cell.label),[setKey])
+  return <Pad {...{width, height, notes, voices, startCell, stopCell, onDblHitCell}} style={{
+    shadowBlur:10,
+    shadowOpacity: 0.6
+  }} ></Pad>
+}
+
+export function Pad({width, height, notes, voices, stopCell, startCell, onDblHitCell, style}: {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object}) {
+
+  const {grid:cells, minX, maxX, minY, maxY} = useMemo(()=>{
+    return generateGrid(notes)
+  },[notes])
   const {squareSize, offset, extraX, extraY} = useMemo(()=>{
     let [numW,numH] = ([(1+maxX-minX),1+maxY-minY])
     // console.log(width/numW, numW, height/numH, numH)
@@ -142,33 +157,13 @@ function Pad({width, height}) {
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
   // const ScaleInput = useMemo(()=>(),[])
-  // const [voices, setActiveVoices] = useState<Record<string,string|null>>({})
-  const startCell = useCallback((touchId, cellId)=>{
-    try{
-      console.log('start',touchId, cellId)
-      if (touchId == null) throw Error('start: more than 8')
-      toggleVoice(touchId, {id:cellId, freqs:[toFreq(cellId)]})
-    }catch(ex){
-      console.warn('ERROR',ex)
-    }
-  },[toggleVoice, toFreq])
-  const stopCell = useCallback((touchId, cellId?)=>{
-    try{
-      console.log('stop', touchId, cellId)
-      if (touchId == null) throw Error('stop: more than 8')
-      toggleVoice(touchId, {id: touchId, freqs: null})
-    }catch(ex){
-      console.warn('ERROR',ex)
-    }
-  },[toggleVoice])
   
- 
   const activeCells = useMemo(()=>{
-    let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v]: any)=>([v.id, k])).filter(d=>d))
+    let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v])=>(v?.map(voice=>([voice.cellId, k])))).flat().filter(d=>d))
     return active
   },
   [voices])
-  const {scale: selectedScale, key: selectedRoot, setKey} = FlowSelectorContext.useFlowSelectorContext()
+  const {scale: selectedScale, key: selectedRoot} = FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
     let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)
@@ -184,9 +179,8 @@ function Pad({width, height}) {
     }else{
       let range08 = [0,1,2,3,4,5,6,7,8]
       // Object.keys(refTouches)
-      let newId = range08.find(id=>!voices[id])
+      let newId = range08.find(id=>!voices || !voices[id])
       refTouches.current[touchId]=newId
-      // console.log(touchId, newId)
     }
     return refTouches.current[touchId]
   },[voices])
@@ -202,36 +196,41 @@ function Pad({width, height}) {
         // if (voices['click']) stopCell('click')
       }}
       onMouseUp={(e)=>{
-        if (voices['click']) stopCell('click')
+        if (voices && stopCell && voices['click']) stopCell('click')
         setStarted(false)
       }}
       onTouchEnd={(e: any)=>{
-        if (voices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
+        if (voices && stopCell && voices[getTouchKey(e.pointerId)]) stopCell(getTouchKey(e.pointerId))
       }}
+      // onTouchMove={(e:any)=>{
+      //   console.log(e)
+      // }}
       >
       <Layer >
         {Object.entries(cells).map(([cellId,cell]:any) => {
-          let noteLabel = Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true })
+          let noteLabel = cell.label
           let effects = selectedCells.includes(noteLabel)? {
             onMouseDown:(e)=>{
-              // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
+              // console.log(e)
               setStarted(true)
-              startCell('click', cellId)
+              if (startCell)startCell('click', cell)
             },
-            
             onMouseUp:(e)=>{
-              e.cancelBubble=true
-              stopCell('click', cellId)
-              setStarted(false)
+              if (stopCell){
+                e.cancelBubble=true
+                stopCell('click')
+                setStarted(false)
+              }
             },
-            
             onTouchStart:(e:any)=>{
-              // console.log(Midi.midiToNoteName(cell.note, { pitchClass: true, sharps: true }))
-              startCell(getTouchKey(e.pointerId), cellId)
-              // startCell(cellId, cell)
+              if(startCell){
+                startCell(getTouchKey(e.pointerId), cell)
+              }
             },
             onTouchEnd: (e:any)=>{
-              stopCell(getTouchKey(e.pointerId), cellId)
+              if (stopCell){
+                stopCell(getTouchKey(e.pointerId))
+              }
             },
             
           }:{};
@@ -245,20 +244,20 @@ function Pad({width, height}) {
               }
             },
             onTouchMove:(e:any)=>{
-              e.evt.preventDefault()
-              e.cancelBubble=true
-              if(voices[getTouchKey(e.pointerId)]===cellId){
+              // e.evt.preventDefault()
+              // e.cancelBubble=true
+              if(voices && voices[getTouchKey(e.pointerId)]===cellId){
                 // setMove(getTouchKey(e.pointerId), {x:e.evt.clientX, y:e.evt.clientY})
                 // console.log('move', getTouchKey(e.pointerId), cellId)
               }else{
                 // setMove(getTouchKey(e.pointerId), null)
-                startCell(getTouchKey(e.pointerId), cellId)
+                if (startCell) startCell(getTouchKey(e.pointerId), cell)
               }
             },
             onMouseEnter:()=>{
               if (started){
                 // setMove('click', null)
-                startCell('click', cellId)
+                if (startCell) startCell('click', cell)
               }
             },
           }:{}
@@ -266,11 +265,9 @@ function Pad({width, height}) {
           //
           <Group x={extraX/2+cell.x*squareSize}  y={extraY/2+((cell.y)*squareSize)} 
             id={`${cell.note}-g`}
-            onDblTap={(e)=>setKey(noteLabel)}
-            onDblClick={(e)=>setKey(noteLabel)}
-            > 
-            {
-           
+            onDblTap={onDblHitCell?((e)=>onDblHitCell(cell)):undefined}
+            onDblClick={onDblHitCell?((e)=>onDblHitCell(cell)):undefined}
+            >
               <RectWithLabel
                 orientation={cell.orientation}
                 side={squareSize}
@@ -284,17 +281,15 @@ function Pad({width, height}) {
                 opacity={activeCells[cellId]?1:0.7}
                 // draggable
                 
-                shadowBlur={10}
-                shadowOpacity={0.6}
                 // scaleX={cell.isDragging ? 1.2 : 1}
                 // scaleY={cell.isDragging ? 1.2 : 1}
                 // onDragStart={handleDragStart}
                 // onDragEnd={handleDragEnd}
-                label={`${noteLabel} (${cell.note})`}
+                label={`${noteLabel}`}
                 effects={effects}
                 effectsMove={effectsMove}
-              />}
-          {/*  */}
+                {...(style||{})}
+              />
           </Group>
         )})}
       </Layer>
@@ -317,12 +312,13 @@ const RectWithLabel = (props: {orientation?:keyof typeof DIRECTIONS,side:number,
         return {x: offsetRect, y:offsetRect}
     }
   },[orientation, offsetRect])
+  const {fontSize, textXOffset} = useMemo(()=>({fontSize:side/4,textXOffset:["E", "O"].includes(orientation||'')?(0):(side/16)}),[side,orientation])
   return <Group {...effects}>
       <RectBuffer buffer={0} rotation={45} side={side}
             orientation={props.orientation} 
             {...otherProps} x={offsetRect} />
       <RectBuffer buffer={0.25} rotation={45} side={side} {...otherProps} x={offsetRect} orientation={orientation}  {...effectsMove} opacity={0} strokeWidth={0}/>
-      <Text {...textProps} x={textPositionOffset.x} y={textPositionOffset.y} text={label}/>
+      <Text align="center" {...textProps} fontSize={fontSize} x={textPositionOffset.x-textXOffset} y={textPositionOffset.y-textXOffset} text={label}/>
     </Group>
 }
 
@@ -388,4 +384,4 @@ type TextProps = {label:string, textProps?:TextConfig}
 //   }
 // }
 
-export default Pad;
+
