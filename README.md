@@ -10,7 +10,7 @@
     [] Scroll per moure prisme & pinch in / out (extra columns)
     [] Change double tap x button
 [] Scales drawer
-    [] Scale Bb
+    [x] Scale Bb
     [] Major -> Major augmented -> levenshtein distance 1
     [x] Select scale basic
         [x] Select basic
@@ -19,14 +19,14 @@
     [x] Flow scale complex picker (https://www.tldraw.com/r/28e8b8bd-c1a2-432e-1cec-077dc0c2fac2)
         [x] Change mode inside -> affect visualization from root
         [] Select 2 scales
-        [] Center diagram
-[] Chord drawer 
-    [] Chord accordion with 
-    [] Two scales diagram with chords
+        [x] Center diagram
+    [] Chord picker
+    [] Performace!
+    [] Two scales -> singleClick
     [] N scales with chords?
     [] Create geometries (other chords) -> SAVE
     [] Override key (triangle) (drag & drop)
-[] Time drawer
+[] Chord selected panel (timeline)
     [] Upgrade chords  -> SAVE
     [] Time editor  -> SAVE
     [] Comic viewer

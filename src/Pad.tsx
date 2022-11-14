@@ -160,7 +160,7 @@ export function Pad({width, height, notes, voices, stopCell, startCell, onDblHit
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
   // const ScaleInput = useMemo(()=>(),[])
-  const {scale: selectedScale, key: selectedRoot} = FlowSelectorContext.useFlowSelectorContext()
+  const {scale: selectedScale, key: selectedRoot} = useMemo(()=>({scale:'dorian', key: 'D'}),[])//FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
     let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)

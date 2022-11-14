@@ -8,7 +8,7 @@ import { Chord, Interval, Scale } from "@tonaljs/tonal";
 import { autoContextProviderFactory } from "./utils";
 import { getChord, toFreq } from "./utilsTonal";
 import { Pad } from "./Pad";
-import { ElementaryContext } from "./Intro";
+import { ElementaryContext,} from "./Intro";
 const nodeWidth = 172;
 const nodeHeight = 45;
 const styleNodes: any = {
@@ -29,11 +29,11 @@ export const getRomanChordLabel = (chordObj, scale)=>{
 }
 // import levenshtein from 'fast-levenshtein'
 
-const ChordPanel = ({root, scale, width, height}: {root:string, scale:any, width:number, height:number})=>{
+const ChordPanel = memo(({root, scale, width, height, toggleVoice}: {root:string, scale:any, width:number, height:number, toggleVoice:(k:string, voices: any)=>void})=>{
   // const rootMidi = useMemo(()=>minNote+(Note.get(root)?.chroma||0),[root])
   // real obj
-  let chordNotesObjs = getChord(root, scale, '10101')
-  const {toggleVoice} = useContext(ElementaryContext)
+  let chordNotesObjs = useMemo(()=>getChord(root, scale, '10101'),[root, scale])
+  
   // let {defaultOctave}: any = useContext(FlowSelectorContext)
   let chordNotes = useMemo(()=>chordNotesObjs.map(n=>n.name),[chordNotesObjs])
   let chordObj = useMemo(()=>{
@@ -42,14 +42,17 @@ const ChordPanel = ({root, scale, width, height}: {root:string, scale:any, width
     return Chord.get(chordSel[0])
   },[chordNotes])
   let chordNotesMidi = useMemo(()=>chordNotesObjs.map(n=>n.midi) as number[],[chordNotesObjs])
+  // console.log('rendering chord!', chordNotesMidi)
   return <div style={{fontSize:'xx-small', width, height}} onClick={()=>toggleVoice('chord', chordNotesMidi.map(note=>({id:note, freq: toFreq(note)})))}>
     <Pad width={width} height={height} notes={chordNotesMidi}/>
     {chordObj?chordObj.symbol:chordNotes.join(";")}
   </div>
-}
+})
+//
 const ScaleNode = memo(({ id, data, targetPosition, sourcePosition }: any) => {
   let {scale, root} = data
   const scaleObj = useMemo(()=>Scale.get(`${root} ${scale}`),[root,scale])
+  const {toggleVoice} = useContext(ElementaryContext)
   return (
     
      <div
@@ -61,7 +64,7 @@ const ScaleNode = memo(({ id, data, targetPosition, sourcePosition }: any) => {
         {scale}
         </div>
         <div style={{display:'flex'}}>
-          {scaleObj.notes.map(n=><div style={{flex:1}}><ChordPanel root={n} scale={scaleObj} width={nodeWidth/7} height={nodeHeight/2}/></div>)}
+          {scaleObj.notes.map(n=><div style={{flex:1}}><ChordPanel toggleVoice={toggleVoice} root={n} scale={scaleObj} width={nodeWidth/7} height={nodeHeight/2}/></div>)}
         </div>
       </div>
     
