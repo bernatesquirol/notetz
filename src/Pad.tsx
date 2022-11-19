@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Group, Line } from 'react-konva';
-import { Midi, Scale } from "@tonaljs/tonal";
+import { Midi, Note, Scale } from "@tonaljs/tonal";
 import { TextConfig } from 'konva/lib/shapes/Text';
 import { RectConfig } from 'konva/lib/shapes/Rect';
 import { FlowSelectorContext } from './FlowSelector';
@@ -106,7 +106,10 @@ function generateGrid(listNotes): {grid:Record<string,{x:number,y:number,note:nu
   // debugger
   return {grid, minX:0, maxX:maxX, minY:0, maxY}
 }
-export function PlayingPad({width, height, notes}){
+const range = (min: number, size: number)=>{
+  return (new Array(size)).fill(1).map((i,j)=>j+min)
+}
+export function PlayingPad({width, height}){
   const {toggleVoice, voices} = useContext(ElementaryContext)
   const startCell = useCallback((touchId, cell)=>{
     try{
@@ -131,10 +134,12 @@ export function PlayingPad({width, height, notes}){
     return active
   },
   [voices])
-  return <Pad {...{width, height, notes, voices, startCell, stopCell, onDblHitCell, activeCells}} style={{
+  const {scale, key} = FlowSelectorContext.useFlowSelectorContext()
+  const notes = useMemo(()=>range(60+(Note.get(key||'C')?.chroma||0),24),[key])
+  return <ColouredPad {...{selectedScale: scale, selectedRoot:key, notes, width, height, voices, startCell, stopCell, onDblHitCell, activeCells}} style={{
     shadowBlur:10,
     shadowOpacity: 0.6
-  }} ></Pad>
+  }} ></ColouredPad>
 }
 type ColouredPadParams = {selectedRoot:string, selectedScale:string}&PadParams
 type PadParams = {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object, activeCells?:Record<number|string, string>}

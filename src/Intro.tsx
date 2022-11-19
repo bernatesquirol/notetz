@@ -58,13 +58,11 @@ export const ElementaryContextProvider = ({children})=>{
   </ElementaryContext.Provider>
 }
 export const defaultOctave = 4
-const minNote = 60
-const maxNote = 84
+//const minNote = 60
+//const maxNote = 84
 
-const range = (min: number, max: number)=>{
-  return (new Array(max-min)).fill(1).map((i,j)=>j+min)
-}
-const prova = range(minNote, maxNote)
+
+//sconst prova = range(minNote, maxNote)
 function Intro() {
   const eContext = useContext(ElementaryAudioContext)
   const [ready, setReady] = useState(eContext.audioContext.state!=='suspended')
@@ -87,10 +85,10 @@ function Intro() {
     <>
     {ready?
     <ElementaryContextProvider>
-    <FlowSelectorContext.Provider initialValue={{key:'D', scale:'dorian', defaultOctave:4}}>
+    <FlowSelectorContext.Provider initialValue={{key:'A', scale:'aeolian', defaultOctave:4}}>
       {/* <FlowSelector width={width} height={height*0.25} createNodesAndEdges={createMapScales} /> */}
       <FlowSelector width={width} height={height*0.5} createNodesAndEdges={createDefinitiveMap} />
-      <PlayingPad width={width} height={height*0.5} notes={prova}/>
+      <PlayingPad width={width} height={height*0.5}/>
     </FlowSelectorContext.Provider>
     </ElementaryContextProvider>
     :<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}
