@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { Layer, Stage, Text, Group, Line } from 'react-konva';
 import { Midi, Scale } from "@tonaljs/tonal";
@@ -136,8 +136,10 @@ export function PlayingPad({width, height, notes}){
     shadowOpacity: 0.6
   }} ></Pad>
 }
+type ColouredPadParams = {selectedRoot:string, selectedScale:string}&PadParams
+type PadParams = {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object, activeCells?:Record<number|string, string>}
 
-export function Pad({width, height, notes, voices, stopCell, startCell, onDblHitCell, style, activeCells}: {width:number, height: number, notes:number[], voices?:Record<string,Voice[]>, stopCell?: (id:string)=>void, startCell?: (id:string, cell: any)=>void, onDblHitCell?: (cell:any)=>void, style?: object, activeCells?:Record<number|string, string>}) {
+export const ColouredPad = memo(({selectedRoot, selectedScale, width, height, notes, voices, stopCell, startCell, onDblHitCell, style, activeCells}:ColouredPadParams) => {
 
   const {grid:cells, minX, maxX, minY, maxY} = useMemo(()=>{
     return generateGrid(notes)
@@ -160,7 +162,6 @@ export function Pad({width, height, notes, voices, stopCell, startCell, onDblHit
   }, [height, maxX, maxY, minX, minY, width])
   const [started, setStarted] = useState(false)
   // const ScaleInput = useMemo(()=>(),[])
-  const {scale: selectedScale, key: selectedRoot} = useMemo(()=>({scale:'dorian', key: 'D'}),[])//FlowSelectorContext.useFlowSelectorContext()
   const selectedCells = useMemo(()=>{
     if (!selectedRoot || !selectedScale) return []
     let notes = Scale.get(`${selectedRoot} ${selectedScale}`).notes.map(getSharpValue)
@@ -291,6 +292,10 @@ export function Pad({width, height, notes, voices, stopCell, startCell, onDblHit
       </Layer>
     </Stage></>
   );
+})
+export const Pad = (params:PadParams)=>{
+  const {scale, key} = FlowSelectorContext.useFlowSelectorContext()
+  return <ColouredPad {...params} selectedScale={scale} selectedRoot={key}/>
 }
 const RectWithLabel = (props: {orientation?:keyof typeof DIRECTIONS,side:number,offsetRect:number}&RectConfig&TextProps)=>{
   let {side, effects, effectsMove,orientation, label, textProps, offsetRect, ...otherProps} = props
