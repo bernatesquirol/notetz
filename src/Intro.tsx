@@ -9,6 +9,7 @@ import React from 'react';
 import {el} from '@elemaudio/core';
 import _ from 'lodash';
 import { createDefinitiveMap } from './utilsTonal';
+import Timeline from './Timeline';
 export const ElementaryContext = React.createContext({voices: {} as Record<string,Voice[]>, toggleVoice:(k,v)=>{}})
 const synthFunc = (props: {freq: number, key: string})=>{
   return el.mul(el.cycle(el.const({value: props.freq, key:props.key})), 0.2)
@@ -88,7 +89,8 @@ function Intro() {
     <FlowSelectorContext.Provider initialValue={{key:'A', scale:'aeolian', defaultOctave:4}}>
       {/* <FlowSelector width={width} height={height*0.25} createNodesAndEdges={createMapScales} /> */}
       <FlowSelector width={width} height={height*0.5} createNodesAndEdges={createDefinitiveMap} />
-      <PlayingPad width={width} height={height*0.5}/>
+      <Timeline/>
+      {/*<PlayingPad width={width} height={height*0.5}/>*/}
     </FlowSelectorContext.Provider>
     </ElementaryContextProvider>
     :<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}
