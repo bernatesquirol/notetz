@@ -124,7 +124,7 @@ export function PlayingPad({width, height, notes}){
       console.warn('ERROR',ex)
     }
   },[toggleVoice])
-  const {setKey} = FlowSelectorContext.useFlowSelectorContext()
+  //const {setKey} = FlowSelectorContext.useFlowSelectorContext()
   const onDblHitCell = useCallback((cell)=>{/*setKey(cell.label)*/},[/*setKey*/])
   const activeCells = useMemo(()=>{
     let active = Object.fromEntries(Object.entries(voices||{}).map(([k,v])=>(v?.map(voice=>([voice.id, k])))).flat().filter(d=>d))
