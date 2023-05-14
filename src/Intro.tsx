@@ -89,8 +89,8 @@ function Intro() {
     <ElementaryContextProvider>
     <FlowSelectorContext.Provider initialValue={{key:'D', scale:'dorian', defaultOctave:4}}>
       {/* <FlowSelector width={width} height={height*0.25} createNodesAndEdges={createMapScales} /> */}
-      <FlowSelector width={width} height={height*0.5} createNodesAndEdges={createDefinitiveMap} />
-      <PlayingPad width={width} height={height*0.5} notes={prova}/>
+      {/* <FlowSelector width={width} height={height*0.5} createNodesAndEdges={createDefinitiveMap} /> */}
+      <PlayingPad width={width} height={height} notes={prova}/>
     </FlowSelectorContext.Provider>
     </ElementaryContextProvider>
     :<button style={{width:'100%', height:window.innerHeight}} onClick={resumeAudio}>Play!</button>}
