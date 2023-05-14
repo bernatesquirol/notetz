@@ -3,12 +3,12 @@ import { useWindowSize } from 'react-use-size';
 import { ElementaryAudioContext } from '.';
 // import { read } from "midifile-ts"
 import { PlayingPad } from './Pad';
-import FlowSelector, { FlowSelectorContext } from './FlowSelector';
-// import { createDefinitiveMap, createMapChords, createMapScales } from './utilsTonal';
+import { FlowSelectorContext } from './FlowSelector';
+// import {  createMapChords, createMapScales } from './utilsTonal';
 import React from 'react';
 import {el} from '@elemaudio/core';
 import _ from 'lodash';
-import { createDefinitiveMap } from './utilsTonal';
+// import { createDefinitiveMap } from './utilsTonal';
 export const ElementaryContext = React.createContext({voices: {} as Record<string,Voice[]>, toggleVoice:(k,v)=>{}})
 const synthFunc = (props: {freq: number, key: string})=>{
   return el.mul(el.cycle(el.const({value: props.freq, key:props.key})), 0.2)
